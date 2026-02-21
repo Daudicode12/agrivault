@@ -5,7 +5,7 @@ const rateLimit = require("express-rate-limit");
 const { config } = require("./config/env");
 const { AppDataSource } = require("./config/database");
 const { logger } = require("./utils/logger");
-const { supabase } = require("./config/supabase");
+const { supabase, verifyConnection } = require("./config/supabase");
 
 // Route imports
 const authRoutes = require("./routes/auth.routes");
@@ -61,6 +61,9 @@ const startServer = async () => {
   try {
     await AppDataSource.initialize();
     logger.info("Database connected successfully (Supabase)");
+
+    await verifyConnection();
+    logger.info("Supabase connection verified");
 
     app.listen(config.port, () => {
       logger.info(`AgroVault API running on port ${config.port} [${config.nodeEnv}]`);
