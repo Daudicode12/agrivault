@@ -1,15 +1,10 @@
 const { Router } = require("express");
 const { body, validationResult } = require("express-validator");
-const { AppDataSource } = require("../config/database");
-const { SensorReading } = require("../entities/SensorReading");
-const { StorageUnit } = require("../entities/StorageUnit");
+const { supabase } = require("../config/supabase");
 const { AppError } = require("../middleware/errorHandler");
 const { authenticate, authenticateDevice } = require("../middleware/auth");
-const { Between, LessThanOrEqual, MoreThanOrEqual } = require("typeorm");
 
 const router = Router();
-const readingRepo = () => AppDataSource.getRepository(SensorReading);
-const unitRepo = () => AppDataSource.getRepository(StorageUnit);
 
 // ── POST sensor reading (device auth via API key) ──
 router.post(
@@ -33,10 +28,13 @@ router.post(
       const { temperature, humidity, storageUnitId, recordedAt, batteryLevel, signalStrength } = req.body;
 
       // Validate the storage unit exists and API key matches
-      const unit = await unitRepo().findOne({ where: { id: storageUnitId } });
-      if (!unit) {
-        throw new AppError("Storage unit not found", 404);
-      }
+      const { data: unit, error: unitErr } = await supabase
+        .from("storage_units")
+        .select("id, deviceId, deviceApiKey")
+        .eq("id", storageUnitId)
+        .maybeSingle();
+      if (unitErr) throw new AppError(unitErr.message, 500);
+      if (!unit) throw new AppError("Storage unit not found", 404);
 
       if (unit.deviceApiKey && unit.deviceApiKey !== req.deviceApiKey) {
         throw new AppError("Invalid device API key for this storage unit", 403);
@@ -50,16 +48,20 @@ router.post(
         throw new AppError("Humidity out of valid range (0 to 100%)", 400);
       }
 
-      const reading = readingRepo().create({
-        temperature,
-        humidity,
-        storageUnitId,
-        recordedAt: recordedAt ? new Date(recordedAt) : new Date(),
-        deviceId: unit.deviceId,
-        batteryLevel,
-        signalStrength,
-      });
-      await readingRepo().save(reading);
+      const { data: reading, error } = await supabase
+        .from("sensor_readings")
+        .insert({
+          temperature,
+          humidity,
+          storageUnitId,
+          recordedAt: recordedAt ? new Date(recordedAt).toISOString() : new Date().toISOString(),
+          deviceId: unit.deviceId,
+          batteryLevel,
+          signalStrength,
+        })
+        .select("*")
+        .single();
+      if (error) throw new AppError(error.message, 500);
 
       res.status(201).json({ message: "Sensor reading recorded", reading });
     } catch (error) {
@@ -75,25 +77,26 @@ router.get("/unit/:unitId", authenticate, async (req, res, next) => {
     const { from, to, limit } = req.query;
 
     // Verify ownership
-    const unit = await unitRepo().findOne({ where: { id: unitId, ownerId: req.userId } });
-    if (!unit) {
-      throw new AppError("Storage unit not found", 404);
-    }
+    const { data: unit } = await supabase
+      .from("storage_units")
+      .select("id")
+      .eq("id", unitId)
+      .eq("ownerId", req.userId)
+      .maybeSingle();
+    if (!unit) throw new AppError("Storage unit not found", 404);
 
-    const where = { storageUnitId: unitId };
-    if (from && to) {
-      where.recordedAt = Between(new Date(from), new Date(to));
-    } else if (from) {
-      where.recordedAt = MoreThanOrEqual(new Date(from));
-    } else if (to) {
-      where.recordedAt = LessThanOrEqual(new Date(to));
-    }
+    let query = supabase
+      .from("sensor_readings")
+      .select("*")
+      .eq("storageUnitId", unitId)
+      .order("recordedAt", { ascending: false })
+      .limit(Math.min(parseInt(limit || "100", 10), 1000));
 
-    const readings = await readingRepo().find({
-      where,
-      order: { recordedAt: "DESC" },
-      take: Math.min(parseInt(limit || "100", 10), 1000),
-    });
+    if (from) query = query.gte("recordedAt", new Date(from).toISOString());
+    if (to) query = query.lte("recordedAt", new Date(to).toISOString());
+
+    const { data: readings, error } = await query;
+    if (error) throw new AppError(error.message, 500);
 
     res.json({ readings, count: readings.length });
   } catch (error) {
@@ -104,15 +107,22 @@ router.get("/unit/:unitId", authenticate, async (req, res, next) => {
 // ── GET latest reading for a storage unit ──
 router.get("/unit/:unitId/latest", authenticate, async (req, res, next) => {
   try {
-    const unit = await unitRepo().findOne({ where: { id: req.params.unitId, ownerId: req.userId } });
-    if (!unit) {
-      throw new AppError("Storage unit not found", 404);
-    }
+    const { data: unit } = await supabase
+      .from("storage_units")
+      .select("id")
+      .eq("id", req.params.unitId)
+      .eq("ownerId", req.userId)
+      .maybeSingle();
+    if (!unit) throw new AppError("Storage unit not found", 404);
 
-    const latest = await readingRepo().findOne({
-      where: { storageUnitId: req.params.unitId },
-      order: { recordedAt: "DESC" },
-    });
+    const { data: latest, error } = await supabase
+      .from("sensor_readings")
+      .select("*")
+      .eq("storageUnitId", req.params.unitId)
+      .order("recordedAt", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new AppError(error.message, 500);
 
     res.json({ reading: latest || null });
   } catch (error) {
