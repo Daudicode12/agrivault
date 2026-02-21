@@ -1,11 +1,9 @@
 const { Router } = require("express");
-const { AppDataSource } = require("../config/database");
-const { Alert } = require("../entities/Alert");
+const { supabase } = require("../config/supabase");
 const { AppError } = require("../middleware/errorHandler");
 const { authenticate } = require("../middleware/auth");
 
 const router = Router();
-const alertRepo = () => AppDataSource.getRepository(Alert);
 
 router.use(authenticate);
 
@@ -14,16 +12,18 @@ router.get("/", async (req, res, next) => {
   try {
     const { unreadOnly, type, limit } = req.query;
 
-    const where = { userId: req.userId };
-    if (unreadOnly === "true") where.isRead = false;
-    if (type) where.type = type;
+    let query = supabase
+      .from("alerts")
+      .select("*, storageUnit:storage_units(*)")
+      .eq("userId", req.userId)
+      .order("createdAt", { ascending: false })
+      .limit(Math.min(parseInt(limit || "50", 10), 200));
 
-    const alerts = await alertRepo().find({
-      where,
-      relations: ["storageUnit"],
-      order: { createdAt: "DESC" },
-      take: Math.min(parseInt(limit || "50", 10), 200),
-    });
+    if (unreadOnly === "true") query = query.eq("isRead", false);
+    if (type) query = query.eq("type", type);
+
+    const { data: alerts, error } = await query;
+    if (error) throw new AppError(error.message, 500);
 
     res.json({ alerts, count: alerts.length });
   } catch (error) {
@@ -34,15 +34,15 @@ router.get("/", async (req, res, next) => {
 // ── Mark alert as read ──
 router.patch("/:id/read", async (req, res, next) => {
   try {
-    const alert = await alertRepo().findOne({
-      where: { id: req.params.id, userId: req.userId },
-    });
-    if (!alert) {
-      throw new AppError("Alert not found", 404);
-    }
-
-    alert.isRead = true;
-    await alertRepo().save(alert);
+    const { data: alert, error } = await supabase
+      .from("alerts")
+      .update({ isRead: true })
+      .eq("id", req.params.id)
+      .eq("userId", req.userId)
+      .select("*")
+      .maybeSingle();
+    if (error) throw new AppError(error.message, 500);
+    if (!alert) throw new AppError("Alert not found", 404);
 
     res.json({ message: "Alert marked as read" });
   } catch (error) {
@@ -53,7 +53,13 @@ router.patch("/:id/read", async (req, res, next) => {
 // ── Mark all alerts as read ──
 router.patch("/read-all", async (req, res, next) => {
   try {
-    await alertRepo().update({ userId: req.userId, isRead: false }, { isRead: true });
+    const { error } = await supabase
+      .from("alerts")
+      .update({ isRead: true })
+      .eq("userId", req.userId)
+      .eq("isRead", false);
+    if (error) throw new AppError(error.message, 500);
+
     res.json({ message: "All alerts marked as read" });
   } catch (error) {
     next(error);

@@ -1,37 +1,29 @@
 const { Router } = require("express");
 const { body, validationResult } = require("express-validator");
-const { AppDataSource } = require("../config/database");
-const { MarketData } = require("../entities/MarketData");
+const { supabase } = require("../config/supabase");
 const { AppError } = require("../middleware/errorHandler");
 const { authenticate } = require("../middleware/auth");
-const { Between, MoreThanOrEqual, LessThanOrEqual } = require("typeorm");
 
 const router = Router();
-const marketRepo = () => AppDataSource.getRepository(MarketData);
 
 // ── GET market data with filters ──
 router.get("/", async (req, res, next) => {
   try {
     const { commodityId, from, to, market, limit } = req.query;
 
-    const where = {};
-    if (commodityId) where.commodityId = commodityId;
-    if (market) where.market = market;
+    let query = supabase
+      .from("market_data")
+      .select("*, commodity:commodities(*)")
+      .order("recordedAt", { ascending: false })
+      .limit(Math.min(parseInt(limit || "100", 10), 1000));
 
-    if (from && to) {
-      where.recordedAt = Between(new Date(from), new Date(to));
-    } else if (from) {
-      where.recordedAt = MoreThanOrEqual(new Date(from));
-    } else if (to) {
-      where.recordedAt = LessThanOrEqual(new Date(to));
-    }
+    if (commodityId) query = query.eq("commodityId", commodityId);
+    if (market) query = query.eq("market", market);
+    if (from) query = query.gte("recordedAt", new Date(from).toISOString());
+    if (to) query = query.lte("recordedAt", new Date(to).toISOString());
 
-    const data = await marketRepo().find({
-      where,
-      relations: ["commodity"],
-      order: { recordedAt: "DESC" },
-      take: Math.min(parseInt(limit || "100", 10), 1000),
-    });
+    const { data, error } = await query;
+    if (error) throw new AppError(error.message, 500);
 
     res.json({ marketData: data, count: data.length });
   } catch (error) {
@@ -57,12 +49,20 @@ router.post(
         throw new AppError(errors.array()[0].msg, 400);
       }
 
-      const entry = marketRepo().create({
-        ...req.body,
-        source: "manual",
-        recordedAt: req.body.recordedAt ? new Date(req.body.recordedAt) : new Date(),
-      });
-      await marketRepo().save(entry);
+      const { price, commodityId, market, currency, recordedAt } = req.body;
+      const { data: entry, error } = await supabase
+        .from("market_data")
+        .insert({
+          price,
+          commodityId,
+          market,
+          currency: currency || "KES",
+          source: "manual",
+          recordedAt: recordedAt ? new Date(recordedAt).toISOString() : new Date().toISOString(),
+        })
+        .select("*")
+        .single();
+      if (error) throw new AppError(error.message, 500);
 
       res.status(201).json({ message: "Market data recorded", marketData: entry });
     } catch (error) {
