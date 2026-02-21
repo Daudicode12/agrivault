@@ -3,9 +3,8 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const { config } = require("./config/env");
-const { AppDataSource } = require("./config/database");
 const { logger } = require("./utils/logger");
-const { supabase, verifyConnection } = require("./config/supabase");
+const { verifyConnection } = require("./config/supabase");
 
 // Route imports
 const authRoutes = require("./routes/auth.routes");
@@ -59,9 +58,6 @@ app.use(errorHandler);
 // ── Start Server ──
 const startServer = async () => {
   try {
-    await AppDataSource.initialize();
-    logger.info("Database connected successfully (Supabase)");
-
     await verifyConnection();
     logger.info("Supabase connection verified");
 

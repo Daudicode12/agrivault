@@ -1,18 +1,10 @@
 const bcrypt = require("bcryptjs");
-const { AppDataSource } = require("../config/database");
-const { User } = require("../entities/User");
-const { Commodity } = require("../entities/Commodity");
-const { StorageUnit } = require("../entities/StorageUnit");
+const { supabase } = require("../config/supabase");
 const { logger } = require("../utils/logger");
 
 const seed = async () => {
   try {
-    await AppDataSource.initialize();
-    logger.info("Database connected for seeding...");
-
-    const userRepo = AppDataSource.getRepository(User);
-    const commodityRepo = AppDataSource.getRepository(Commodity);
-    const unitRepo = AppDataSource.getRepository(StorageUnit);
+    logger.info("Starting seed via Supabase JS...");
 
     // ── Seed Commodities ──
     const commodities = [
@@ -89,34 +81,60 @@ const seed = async () => {
     ];
 
     for (const c of commodities) {
-      const exists = await commodityRepo.findOne({ where: { name: c.name } });
+      const { data: exists } = await supabase
+        .from("commodities")
+        .select("id")
+        .eq("name", c.name)
+        .maybeSingle();
       if (!exists) {
-        await commodityRepo.save(commodityRepo.create(c));
+        const { error } = await supabase.from("commodities").insert(c);
+        if (error) throw error;
         logger.info(`Seeded commodity: ${c.name}`);
       }
     }
 
     // ── Seed Demo User ──
     const demoEmail = "farmer@agrovault.dev";
-    let demoUser = await userRepo.findOne({ where: { email: demoEmail } });
+    let { data: demoUser } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", demoEmail)
+      .maybeSingle();
+
     if (!demoUser) {
-      demoUser = userRepo.create({
-        fullName: "Demo Farmer",
-        email: demoEmail,
-        password: await bcrypt.hash("password123", 12),
-        phone: "+254700000000",
-        location: "Nakuru, Kenya",
-        role: "farmer",
-      });
-      await userRepo.save(demoUser);
+      const { data: newUser, error } = await supabase
+        .from("users")
+        .insert({
+          fullName: "Demo Farmer",
+          email: demoEmail,
+          password: await bcrypt.hash("password123", 12),
+          phone: "+254700000000",
+          location: "Nakuru, Kenya",
+          role: "farmer",
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      demoUser = newUser;
       logger.info("Seeded demo user: farmer@agrovault.dev / password123");
     }
 
     // ── Seed Demo Storage Unit ──
-    const maize = await commodityRepo.findOne({ where: { name: "Maize" } });
-    const existingUnit = await unitRepo.findOne({ where: { ownerId: demoUser.id, name: "Barn A - Maize Storage" } });
+    const { data: maize } = await supabase
+      .from("commodities")
+      .select("id")
+      .eq("name", "Maize")
+      .maybeSingle();
+
+    const { data: existingUnit } = await supabase
+      .from("storage_units")
+      .select("id")
+      .eq("ownerId", demoUser.id)
+      .eq("name", "Barn A - Maize Storage")
+      .maybeSingle();
+
     if (!existingUnit && maize) {
-      const unit = unitRepo.create({
+      const { error } = await supabase.from("storage_units").insert({
         name: "Barn A - Maize Storage",
         location: "-0.3031, 36.0800",
         capacityKg: 5000,
@@ -127,7 +145,7 @@ const seed = async () => {
         ownerId: demoUser.id,
         commodityId: maize.id,
       });
-      await unitRepo.save(unit);
+      if (error) throw error;
       logger.info("Seeded storage unit: Barn A - Maize Storage");
     }
 
