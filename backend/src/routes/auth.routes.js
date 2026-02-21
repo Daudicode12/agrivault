@@ -30,7 +30,7 @@ router.post(
 
       // Check if user exists
       const { data: existing } = await supabase
-        .from("users")
+        .from("agro_users")
         .select("id")
         .eq("email", email)
         .maybeSingle();
@@ -41,7 +41,7 @@ router.post(
       // Hash password and create user
       const hashedPassword = await bcrypt.hash(password, 12);
       const { data: user, error } = await supabase
-        .from("users")
+        .from("agro_users")
         .insert({ fullName, email, password: hashedPassword, phone, location })
         .select("id, fullName, email, role")
         .single();
@@ -80,7 +80,7 @@ router.post(
       const { email, password } = req.body;
 
       const { data: user, error } = await supabase
-        .from("users")
+        .from("agro_users")
         .select("id, fullName, email, password, role")
         .eq("email", email)
         .maybeSingle();
@@ -118,7 +118,7 @@ router.post(
 router.get("/profile", authenticate, async (req, res, next) => {
   try {
     const { data: user, error } = await supabase
-      .from("users")
+      .from("agro_users")
       .select("id, fullName, email, phone, location, role, createdAt")
       .eq("id", req.userId)
       .maybeSingle();

@@ -82,12 +82,12 @@ const seed = async () => {
 
     for (const c of commodities) {
       const { data: exists } = await supabase
-        .from("commodities")
+        .from("agro_commodities")
         .select("id")
         .eq("name", c.name)
         .maybeSingle();
       if (!exists) {
-        const { error } = await supabase.from("commodities").insert(c);
+        const { error } = await supabase.from("agro_commodities").insert(c);
         if (error) throw error;
         logger.info(`Seeded commodity: ${c.name}`);
       }
@@ -96,14 +96,14 @@ const seed = async () => {
     // ── Seed Demo User ──
     const demoEmail = "farmer@agrovault.dev";
     let { data: demoUser } = await supabase
-      .from("users")
+      .from("agro_users")
       .select("*")
       .eq("email", demoEmail)
       .maybeSingle();
 
     if (!demoUser) {
       const { data: newUser, error } = await supabase
-        .from("users")
+        .from("agro_users")
         .insert({
           fullName: "Demo Farmer",
           email: demoEmail,
@@ -121,20 +121,20 @@ const seed = async () => {
 
     // ── Seed Demo Storage Unit ──
     const { data: maize } = await supabase
-      .from("commodities")
+      .from("agro_commodities")
       .select("id")
       .eq("name", "Maize")
       .maybeSingle();
 
     const { data: existingUnit } = await supabase
-      .from("storage_units")
+      .from("agro_storage_units")
       .select("id")
       .eq("ownerId", demoUser.id)
       .eq("name", "Barn A - Maize Storage")
       .maybeSingle();
 
     if (!existingUnit && maize) {
-      const { error } = await supabase.from("storage_units").insert({
+      const { error } = await supabase.from("agro_storage_units").insert({
         name: "Barn A - Maize Storage",
         location: "-0.3031, 36.0800",
         capacityKg: 5000,

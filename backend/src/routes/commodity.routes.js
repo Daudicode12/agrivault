@@ -10,7 +10,7 @@ const router = Router();
 router.get("/", async (_req, res, next) => {
   try {
     const { data: commodities, error } = await supabase
-      .from("commodities")
+      .from("agro_commodities")
       .select("*")
       .order("name", { ascending: true });
     if (error) throw new AppError(error.message, 500);
@@ -24,7 +24,7 @@ router.get("/", async (_req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   try {
     const { data: commodity, error } = await supabase
-      .from("commodities")
+      .from("agro_commodities")
       .select("*")
       .eq("id", req.params.id)
       .maybeSingle();
@@ -60,7 +60,7 @@ router.post(
       }
 
       const { data: existing } = await supabase
-        .from("commodities")
+        .from("agro_commodities")
         .select("id")
         .eq("name", req.body.name)
         .maybeSingle();
@@ -69,7 +69,7 @@ router.post(
       }
 
       const { data: commodity, error } = await supabase
-        .from("commodities")
+        .from("agro_commodities")
         .insert(req.body)
         .select("*")
         .single();
@@ -86,7 +86,7 @@ router.post(
 router.put("/:id", authenticate, async (req, res, next) => {
   try {
     const { data: commodity, error } = await supabase
-      .from("commodities")
+      .from("agro_commodities")
       .update(req.body)
       .eq("id", req.params.id)
       .select("*")
@@ -104,7 +104,7 @@ router.put("/:id", authenticate, async (req, res, next) => {
 router.delete("/:id", authenticate, async (req, res, next) => {
   try {
     const { data, error } = await supabase
-      .from("commodities")
+      .from("agro_commodities")
       .delete()
       .eq("id", req.params.id)
       .select("id");

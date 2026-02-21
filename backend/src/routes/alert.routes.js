@@ -13,7 +13,7 @@ router.get("/", async (req, res, next) => {
     const { unreadOnly, type, limit } = req.query;
 
     let query = supabase
-      .from("alerts")
+      .from("agro_alerts")
       .select("*, storageUnit:storage_units(*)")
       .eq("userId", req.userId)
       .order("createdAt", { ascending: false })
@@ -35,7 +35,7 @@ router.get("/", async (req, res, next) => {
 router.patch("/:id/read", async (req, res, next) => {
   try {
     const { data: alert, error } = await supabase
-      .from("alerts")
+      .from("agro_alerts")
       .update({ isRead: true })
       .eq("id", req.params.id)
       .eq("userId", req.userId)
@@ -54,7 +54,7 @@ router.patch("/:id/read", async (req, res, next) => {
 router.patch("/read-all", async (req, res, next) => {
   try {
     const { error } = await supabase
-      .from("alerts")
+      .from("agro_alerts")
       .update({ isRead: true })
       .eq("userId", req.userId)
       .eq("isRead", false);

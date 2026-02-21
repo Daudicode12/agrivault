@@ -12,8 +12,8 @@ router.get("/", async (req, res, next) => {
     const { commodityId, from, to, market, limit } = req.query;
 
     let query = supabase
-      .from("market_data")
-      .select("*, commodity:commodities(*)")
+      .from("agro_market_data")
+      .select("*, commodity:agro_commodities(*)")
       .order("recordedAt", { ascending: false })
       .limit(Math.min(parseInt(limit || "100", 10), 1000));
 
@@ -51,7 +51,7 @@ router.post(
 
       const { price, commodityId, market, currency, recordedAt } = req.body;
       const { data: entry, error } = await supabase
-        .from("market_data")
+        .from("agro_market_data")
         .insert({
           price,
           commodityId,

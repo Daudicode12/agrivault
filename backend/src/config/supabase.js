@@ -16,7 +16,7 @@ const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
  * Warns (but does not crash) if tables are not yet created.
  */
 const verifyConnection = async () => {
-  const { data, error } = await supabase.from("commodities").select("id").limit(1);
+  const { data, error } = await supabase.from("agro_commodities").select("id").limit(1);
   if (error) {
     if (error.message.includes("schema cache") || error.code === "PGRST204") {
       console.warn(

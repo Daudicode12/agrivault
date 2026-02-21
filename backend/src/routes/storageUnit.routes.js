@@ -27,7 +27,7 @@ router.post(
 
       const { name, location, capacityKg, commodityId } = req.body;
       const { data: unit, error } = await supabase
-        .from("storage_units")
+        .from("agro_storage_units")
         .insert({ name, location, capacityKg, commodityId, ownerId: req.userId })
         .select("*")
         .single();
@@ -44,8 +44,8 @@ router.post(
 router.get("/", async (req, res, next) => {
   try {
     const { data: units, error } = await supabase
-      .from("storage_units")
-      .select("*, commodity:commodities(*)")
+      .from("agro_storage_units")
+      .select("*, commodity:agro_commodities(*)")
       .eq("ownerId", req.userId)
       .order("createdAt", { ascending: false });
     if (error) throw new AppError(error.message, 500);
@@ -60,8 +60,8 @@ router.get("/", async (req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   try {
     const { data: unit, error } = await supabase
-      .from("storage_units")
-      .select("*, commodity:commodities(*)")
+      .from("agro_storage_units")
+      .select("*, commodity:agro_commodities(*)")
       .eq("id", req.params.id)
       .eq("ownerId", req.userId)
       .maybeSingle();
@@ -98,7 +98,7 @@ router.put(
       if (commodityId !== undefined) updates.commodityId = commodityId;
 
       const { data: unit, error } = await supabase
-        .from("storage_units")
+        .from("agro_storage_units")
         .update(updates)
         .eq("id", req.params.id)
         .eq("ownerId", req.userId)
@@ -118,7 +118,7 @@ router.put(
 router.delete("/:id", async (req, res, next) => {
   try {
     const { data, error } = await supabase
-      .from("storage_units")
+      .from("agro_storage_units")
       .delete()
       .eq("id", req.params.id)
       .eq("ownerId", req.userId)

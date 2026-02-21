@@ -29,7 +29,7 @@ router.post(
 
       // Validate the storage unit exists and API key matches
       const { data: unit, error: unitErr } = await supabase
-        .from("storage_units")
+        .from("agro_storage_units")
         .select("id, deviceId, deviceApiKey")
         .eq("id", storageUnitId)
         .maybeSingle();
@@ -49,7 +49,7 @@ router.post(
       }
 
       const { data: reading, error } = await supabase
-        .from("sensor_readings")
+        .from("agro_sensor_readings")
         .insert({
           temperature,
           humidity,
@@ -78,7 +78,7 @@ router.get("/unit/:unitId", authenticate, async (req, res, next) => {
 
     // Verify ownership
     const { data: unit } = await supabase
-      .from("storage_units")
+      .from("agro_storage_units")
       .select("id")
       .eq("id", unitId)
       .eq("ownerId", req.userId)
@@ -86,7 +86,7 @@ router.get("/unit/:unitId", authenticate, async (req, res, next) => {
     if (!unit) throw new AppError("Storage unit not found", 404);
 
     let query = supabase
-      .from("sensor_readings")
+      .from("agro_sensor_readings")
       .select("*")
       .eq("storageUnitId", unitId)
       .order("recordedAt", { ascending: false })
@@ -108,7 +108,7 @@ router.get("/unit/:unitId", authenticate, async (req, res, next) => {
 router.get("/unit/:unitId/latest", authenticate, async (req, res, next) => {
   try {
     const { data: unit } = await supabase
-      .from("storage_units")
+      .from("agro_storage_units")
       .select("id")
       .eq("id", req.params.unitId)
       .eq("ownerId", req.userId)
@@ -116,7 +116,7 @@ router.get("/unit/:unitId/latest", authenticate, async (req, res, next) => {
     if (!unit) throw new AppError("Storage unit not found", 404);
 
     const { data: latest, error } = await supabase
-      .from("sensor_readings")
+      .from("agro_sensor_readings")
       .select("*")
       .eq("storageUnitId", req.params.unitId)
       .order("recordedAt", { ascending: false })
