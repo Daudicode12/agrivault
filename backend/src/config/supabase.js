@@ -1,25 +1,18 @@
-// creating the supabase client connection
 const { createClient } = require("@supabase/supabase-js");
-const dotenv = require("dotenv");
+const { config } = require("./env");
 
-// setting the environment variables
-dotenv.config();
+// Create Supabase client targeting the agrovault schema
+const supabase = createClient(config.supabase.url, config.supabase.serviceKey, {
+  db: { schema: "agrovault" },
+  auth: { persistSession: false },
+});
 
-// creating the connection to the supabase database
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// verifying the connection to the supabase database
-const verifyConnection = async() =>{
-    const { data, error } = await supabase.from("users").select("*").limit(1);
-    if (error) {
-        console.log("supabase connection error:", error);
-        throw new Error("Failed to connect to Supabase");
-    }
-    console.log("supabase connection was successful");
-    
-}
+/**
+ * Verify the Supabase connection by querying a table.
+ */
+const verifyConnection = async () => {
+  const { error } = await supabase.from("commodities").select("id").limit(1);
+  if (error) throw new Error(`Supabase connection failed: ${error.message}`);
+};
 
 module.exports = { supabase, verifyConnection };

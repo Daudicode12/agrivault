@@ -2,14 +2,12 @@ const { Router } = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
-const { AppDataSource } = require("../config/database");
-const { User } = require("../entities/User");
+const { supabase } = require("../config/supabase");
 const { config } = require("../config/env");
 const { AppError } = require("../middleware/errorHandler");
 const { authenticate } = require("../middleware/auth");
 
 const router = Router();
-const userRepo = () => AppDataSource.getRepository(User);
 
 // ── Register ──
 router.post(
@@ -31,21 +29,23 @@ router.post(
       const { fullName, email, password, phone, location } = req.body;
 
       // Check if user exists
-      const existing = await userRepo().findOne({ where: { email } });
+      const { data: existing } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
       if (existing) {
         throw new AppError("Email already registered", 409);
       }
 
       // Hash password and create user
       const hashedPassword = await bcrypt.hash(password, 12);
-      const user = userRepo().create({
-        fullName,
-        email,
-        password: hashedPassword,
-        phone,
-        location,
-      });
-      await userRepo().save(user);
+      const { data: user, error } = await supabase
+        .from("users")
+        .insert({ fullName, email, password: hashedPassword, phone, location })
+        .select("id, fullName, email, role")
+        .single();
+      if (error) throw new AppError(error.message, 500);
 
       // Generate token
       const token = jwt.sign({ id: user.id, email: user.email }, config.jwt.secret, {
@@ -55,12 +55,7 @@ router.post(
       res.status(201).json({
         message: "Registration successful",
         token,
-        user: {
-          id: user.id,
-          fullName: user.fullName,
-          email: user.email,
-          role: user.role,
-        },
+        user,
       });
     } catch (error) {
       next(error);
@@ -84,7 +79,12 @@ router.post(
 
       const { email, password } = req.body;
 
-      const user = await userRepo().findOne({ where: { email } });
+      const { data: user, error } = await supabase
+        .from("users")
+        .select("id, fullName, email, password, role")
+        .eq("email", email)
+        .maybeSingle();
+      if (error) throw new AppError(error.message, 500);
       if (!user) {
         throw new AppError("Invalid email or password", 401);
       }
@@ -117,10 +117,12 @@ router.post(
 // ── Get Profile ──
 router.get("/profile", authenticate, async (req, res, next) => {
   try {
-    const user = await userRepo().findOne({
-      where: { id: req.userId },
-      select: ["id", "fullName", "email", "phone", "location", "role", "createdAt"],
-    });
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("id, fullName, email, phone, location, role, createdAt")
+      .eq("id", req.userId)
+      .maybeSingle();
+    if (error) throw new AppError(error.message, 500);
     if (!user) {
       throw new AppError("User not found", 404);
     }
