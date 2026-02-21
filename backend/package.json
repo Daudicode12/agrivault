@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
+    "start": "nodemon src/server.js",
     "typeorm": "typeorm migration:run -d src/config/database.js",
     "migration:generate": "typeorm migration:generate -d src/config/database.js",
     "migration:run": "typeorm migration:run -d src/config/database.js",
@@ -16,6 +16,7 @@
     "lint": "eslint src --ext .js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
