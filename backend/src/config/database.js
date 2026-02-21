@@ -18,6 +18,7 @@ const AppDataSource = new DataSource({
   database: config.db.url ? undefined : config.db.name,
   synchronize: config.nodeEnv === "development", // Auto-sync in dev only
   logging: config.nodeEnv === "development",
+  schema: "agrovault",
   ssl: {
     rejectUnauthorized: false, // Required for Supabase
   },
