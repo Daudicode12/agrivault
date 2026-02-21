@@ -9,6 +9,7 @@ AgroVault combines IoT environmental monitoring, spoilage prediction, and real-t
 ## Table of Contents
 
 - [Problem Statement](#problem-statement)
+- [What the App Does](#what-the-app-does)
 - [How It Works](#how-it-works)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
@@ -31,6 +32,36 @@ In Sub-Saharan Africa, **30–40 % of harvested crops are lost** before reaching
 1. **Environmental Monitoring** — ESP32 + DHT22 sensors track temperature and humidity inside storage units in real time.
 2. **Spoilage Prevention** — Alerts fire when conditions drift outside safe ranges for each commodity (e.g., 10–15 °C / 12–14 % RH for maize).
 3. **Market Intelligence** — Aggregated commodity prices help farmers decide *when* and *where* to sell.
+
+---
+
+## What the App Does
+
+AgroVault is a full-stack platform (mobile app + backend + IoT hardware) that gives farmers visibility and control over their stored harvests. Here's what a farmer can do:
+
+### For Farmers (Mobile App)
+
+- **Register & manage an account** — Sign up with name, email, phone, and location. Log in with email/password to receive a JWT session.
+- **Add storage units** — Register each physical storage location (barn, warehouse, silo) and assign a commodity type (e.g., Maize, Beans, Coffee). Track capacity and current stock levels.
+- **Link an IoT sensor** — Each storage unit is paired with an ESP32 + DHT22 device via a unique device ID and API key. The sensor pushes temperature and humidity readings every 30 seconds automatically.
+- **Monitor conditions in real time** — View the latest and historical sensor readings for any storage unit. Filter by date range to spot trends.
+- **Receive spoilage alerts** — When temperature or humidity drifts outside the safe range for the stored commodity, the system generates an alert with severity level, description, and the storage unit involved. Alerts can be filtered by type, marked as read individually or in bulk.
+- **Check market prices** — Browse current and historical commodity prices across different markets. Filter by commodity, market, date range. Use this to decide when and where to sell.
+- **Submit manual price entries** — If a farmer observes a price at a local market, they can record it to contribute to the platform's price data.
+- **Get sell/hold recommendations** *(Phase 3)* — The decision engine will combine spoilage risk and market trends to advise farmers: "Sell now at Market X" or "Hold — prices are rising and your storage is safe for 30 more days."
+
+### For IoT Devices
+
+- **Authenticate via API key** — Each sensor device sends its `x-api-key` header. The backend validates it against the storage unit's registered key.
+- **Post sensor readings** — Devices send temperature, humidity, battery level, and signal strength. Readings outside the valid range (-40–80 °C, 0–100 % RH) are rejected.
+- **Automatic device tracking** — Each reading records the device ID, enabling diagnostics per sensor.
+
+### For the System (Backend / Automation)
+
+- **Commodity reference data** — The system maintains optimal storage conditions for each crop (temp range, humidity range, max safe storage days). This drives alert thresholds.
+- **Spoilage prediction logging** *(Phase 3)* — The prediction engine logs risk level, confidence score, estimated days to spoilage, and recommended action for each storage unit over time.
+- **Market data aggregation** — The market engine scrapes prices from external sources (KNBS, FAO, EAGC) on a schedule, normalizing them into a common format.
+- **Row Level Security** — Even if the database is accessed directly (e.g., from a future mobile SDK integration), RLS policies ensure users can only see and modify their own data.
 
 ---
 
