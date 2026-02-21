@@ -11,4 +11,15 @@ const supabaseKey = process.env.SUPABASE_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-module.exports = { supabase };
+// verifying the connection to the supabase database
+const verifyConnection = async() =>{
+    const { data, error } = await supabase.from("users").select("*").limit(1);
+    if (error) {
+        console.log("supabase connection error:", error);
+        throw new Error("Failed to connect to Supabase");
+    }
+    console.log("supabase connection was successful");
+    
+}
+
+module.exports = { supabase, verifyConnection };
