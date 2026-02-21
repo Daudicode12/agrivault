@@ -1,8 +1,8 @@
-import { Router, Response, NextFunction } from "express";
-import { AppDataSource } from "../config/database";
-import { Alert } from "../entities/Alert";
-import { AppError } from "../middleware/errorHandler";
-import { authenticate, AuthRequest } from "../middleware/auth";
+const { Router } = require("express");
+const { AppDataSource } = require("../config/database");
+const { Alert } = require("../entities/Alert");
+const { AppError } = require("../middleware/errorHandler");
+const { authenticate } = require("../middleware/auth");
 
 const router = Router();
 const alertRepo = () => AppDataSource.getRepository(Alert);
@@ -10,11 +10,11 @@ const alertRepo = () => AppDataSource.getRepository(Alert);
 router.use(authenticate);
 
 // ── GET my alerts ──
-router.get("/", async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get("/", async (req, res, next) => {
   try {
     const { unreadOnly, type, limit } = req.query;
 
-    const where: any = { userId: req.userId };
+    const where = { userId: req.userId };
     if (unreadOnly === "true") where.isRead = false;
     if (type) where.type = type;
 
@@ -22,7 +22,7 @@ router.get("/", async (req: AuthRequest, res: Response, next: NextFunction) => {
       where,
       relations: ["storageUnit"],
       order: { createdAt: "DESC" },
-      take: Math.min(parseInt((limit as string) || "50", 10), 200),
+      take: Math.min(parseInt(limit || "50", 10), 200),
     });
 
     res.json({ alerts, count: alerts.length });
@@ -32,7 +32,7 @@ router.get("/", async (req: AuthRequest, res: Response, next: NextFunction) => {
 });
 
 // ── Mark alert as read ──
-router.patch("/:id/read", async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.patch("/:id/read", async (req, res, next) => {
   try {
     const alert = await alertRepo().findOne({
       where: { id: req.params.id, userId: req.userId },
@@ -51,7 +51,7 @@ router.patch("/:id/read", async (req: AuthRequest, res: Response, next: NextFunc
 });
 
 // ── Mark all alerts as read ──
-router.patch("/read-all", async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.patch("/read-all", async (req, res, next) => {
   try {
     await alertRepo().update({ userId: req.userId, isRead: false }, { isRead: true });
     res.json({ message: "All alerts marked as read" });
@@ -60,4 +60,4 @@ router.patch("/read-all", async (req: AuthRequest, res: Response, next: NextFunc
   }
 });
 
-export default router;
+module.exports = router;

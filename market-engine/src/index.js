@@ -9,7 +9,7 @@
  * - Day 13: Moving averages, seasonality, price forecasting
  */
 
-import { CronJob } from "cron";
+// const { CronJob } = require("cron");
 
 console.log("AgroVault Market Engine - Scaffold");
 console.log("==================================");
@@ -22,5 +22,3 @@ console.log("TODO: Implement price forecasting (Day 13)");
 //   // await fetchAllSources();
 // });
 // job.start();
-
-export {};

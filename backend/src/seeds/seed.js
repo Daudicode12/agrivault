@@ -1,10 +1,9 @@
-import "reflect-metadata";
-import bcrypt from "bcryptjs";
-import { AppDataSource } from "../config/database";
-import { User } from "../entities/User";
-import { Commodity } from "../entities/Commodity";
-import { StorageUnit } from "../entities/StorageUnit";
-import { logger } from "../utils/logger";
+const bcrypt = require("bcryptjs");
+const { AppDataSource } = require("../config/database");
+const { User } = require("../entities/User");
+const { Commodity } = require("../entities/Commodity");
+const { StorageUnit } = require("../entities/StorageUnit");
+const { logger } = require("../utils/logger");
 
 const seed = async () => {
   try {

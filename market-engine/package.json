@@ -2,12 +2,11 @@
   "name": "agrovault-market-engine",
   "version": "1.0.0",
   "description": "AgroVault Market Data Collection & Analysis Engine",
-  "main": "dist/index.js",
+  "main": "src/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "scrape": "ts-node src/scrapers/run.ts",
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "scrape": "node src/scrapers/run.js",
     "test": "jest"
   },
   "dependencies": {
@@ -16,14 +15,9 @@
     "dotenv": "^16.4.5",
     "pg": "^8.13.0",
     "typeorm": "^0.3.20",
-    "reflect-metadata": "^0.2.2",
     "winston": "^3.14.0"
   },
   "devDependencies": {
-    "@types/cron": "^2.4.0",
-    "@types/node": "^22.5.0",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.5.4"
+    "nodemon": "^3.1.0"
   }
 }

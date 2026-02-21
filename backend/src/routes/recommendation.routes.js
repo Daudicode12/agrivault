@@ -1,6 +1,6 @@
-import { Router, Response, NextFunction } from "express";
-import { AppError } from "../middleware/errorHandler";
-import { authenticate, AuthRequest } from "../middleware/auth";
+const { Router } = require("express");
+const { AppError } = require("../middleware/errorHandler");
+const { authenticate } = require("../middleware/auth");
 
 const router = Router();
 
@@ -8,7 +8,7 @@ router.use(authenticate);
 
 // ── GET recommendation for a storage unit ──
 // TODO: Implement in Phase 3 (Day 14) — Combined Decision Intelligence Engine
-router.get("/:unitId", async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get("/:unitId", async (req, res, next) => {
   try {
     res.json({
       message: "Recommendation engine coming in Phase 3",
@@ -20,4 +20,4 @@ router.get("/:unitId", async (req: AuthRequest, res: Response, next: NextFunctio
   }
 });
 
-export default router;
+module.exports = router;

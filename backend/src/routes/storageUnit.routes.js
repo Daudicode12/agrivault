@@ -1,9 +1,9 @@
-import { Router, Response, NextFunction } from "express";
-import { body, param, validationResult } from "express-validator";
-import { AppDataSource } from "../config/database";
-import { StorageUnit } from "../entities/StorageUnit";
-import { AppError } from "../middleware/errorHandler";
-import { authenticate, AuthRequest } from "../middleware/auth";
+const { Router } = require("express");
+const { body, validationResult } = require("express-validator");
+const { AppDataSource } = require("../config/database");
+const { StorageUnit } = require("../entities/StorageUnit");
+const { AppError } = require("../middleware/errorHandler");
+const { authenticate } = require("../middleware/auth");
 
 const router = Router();
 const unitRepo = () => AppDataSource.getRepository(StorageUnit);
@@ -20,7 +20,7 @@ router.post(
     body("capacityKg").optional().isNumeric(),
     body("commodityId").optional().isUUID(),
   ],
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -41,7 +41,7 @@ router.post(
 );
 
 // ── List My Storage Units ──
-router.get("/", async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get("/", async (req, res, next) => {
   try {
     const units = await unitRepo().find({
       where: { ownerId: req.userId },
@@ -55,7 +55,7 @@ router.get("/", async (req: AuthRequest, res: Response, next: NextFunction) => {
 });
 
 // ── Get Single Storage Unit ──
-router.get("/:id", async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const unit = await unitRepo().findOne({
       where: { id: req.params.id, ownerId: req.userId },
@@ -81,7 +81,7 @@ router.put(
     body("status").optional().isIn(["active", "inactive", "maintenance"]),
     body("commodityId").optional().isUUID(),
   ],
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
     try {
       const unit = await unitRepo().findOne({
         where: { id: req.params.id, ownerId: req.userId },
@@ -101,7 +101,7 @@ router.put(
 );
 
 // ── Delete Storage Unit ──
-router.delete("/:id", async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.delete("/:id", async (req, res, next) => {
   try {
     const result = await unitRepo().delete({ id: req.params.id, ownerId: req.userId });
     if (result.affected === 0) {
@@ -113,4 +113,4 @@ router.delete("/:id", async (req: AuthRequest, res: Response, next: NextFunction
   }
 });
 
-export default router;
+module.exports = router;

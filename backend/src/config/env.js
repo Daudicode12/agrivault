@@ -1,7 +1,7 @@
-import dotenv from "dotenv";
+const dotenv = require("dotenv");
 dotenv.config();
 
-export const config = {
+const config = {
   port: parseInt(process.env.PORT || "3000", 10),
   nodeEnv: process.env.NODE_ENV || "development",
 
@@ -28,3 +28,5 @@ export const config = {
     max: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
   },
 };
+
+module.exports = { config };

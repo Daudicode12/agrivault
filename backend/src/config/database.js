@@ -1,15 +1,14 @@
-import "reflect-metadata";
-import { DataSource } from "typeorm";
-import { config } from "./env";
-import { User } from "../entities/User";
-import { StorageUnit } from "../entities/StorageUnit";
-import { Commodity } from "../entities/Commodity";
-import { SensorReading } from "../entities/SensorReading";
-import { MarketData } from "../entities/MarketData";
-import { Alert } from "../entities/Alert";
-import { PredictionLog } from "../entities/PredictionLog";
+const { DataSource } = require("typeorm");
+const { config } = require("./env");
+const { User } = require("../entities/User");
+const { StorageUnit } = require("../entities/StorageUnit");
+const { Commodity } = require("../entities/Commodity");
+const { SensorReading } = require("../entities/SensorReading");
+const { MarketData } = require("../entities/MarketData");
+const { Alert } = require("../entities/Alert");
+const { PredictionLog } = require("../entities/PredictionLog");
 
-export const AppDataSource = new DataSource({
+const AppDataSource = new DataSource({
   type: "postgres",
   url: config.db.url || undefined,
   host: config.db.url ? undefined : config.db.host,
@@ -23,5 +22,7 @@ export const AppDataSource = new DataSource({
     rejectUnauthorized: false, // Required for Supabase
   },
   entities: [User, StorageUnit, Commodity, SensorReading, MarketData, Alert, PredictionLog],
-  migrations: ["src/migrations/*.ts"],
+  migrations: ["src/migrations/*.js"],
 });
+
+module.exports = { AppDataSource };

@@ -1,15 +1,15 @@
-import { Router, Request, Response, NextFunction } from "express";
-import { body, validationResult } from "express-validator";
-import { AppDataSource } from "../config/database";
-import { Commodity } from "../entities/Commodity";
-import { AppError } from "../middleware/errorHandler";
-import { authenticate } from "../middleware/auth";
+const { Router } = require("express");
+const { body, validationResult } = require("express-validator");
+const { AppDataSource } = require("../config/database");
+const { Commodity } = require("../entities/Commodity");
+const { AppError } = require("../middleware/errorHandler");
+const { authenticate } = require("../middleware/auth");
 
 const router = Router();
 const commodityRepo = () => AppDataSource.getRepository(Commodity);
 
 // ── List All Commodities (public) ──
-router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/", async (_req, res, next) => {
   try {
     const commodities = await commodityRepo().find({ order: { name: "ASC" } });
     res.json({ commodities });
@@ -19,7 +19,7 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
 });
 
 // ── Get Single Commodity ──
-router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const commodity = await commodityRepo().findOne({ where: { id: req.params.id } });
     if (!commodity) {
@@ -45,7 +45,7 @@ router.post(
     body("maxStorageDays").optional().isInt({ min: 1 }),
     body("unit").optional().trim(),
   ],
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -68,7 +68,7 @@ router.post(
 );
 
 // ── Update Commodity ──
-router.put("/:id", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.put("/:id", authenticate, async (req, res, next) => {
   try {
     const commodity = await commodityRepo().findOne({ where: { id: req.params.id } });
     if (!commodity) {
@@ -85,7 +85,7 @@ router.put("/:id", authenticate, async (req: Request, res: Response, next: NextF
 });
 
 // ── Delete Commodity ──
-router.delete("/:id", authenticate, async (req: Request, res: Response, next: NextFunction) => {
+router.delete("/:id", authenticate, async (req, res, next) => {
   try {
     const result = await commodityRepo().delete({ id: req.params.id });
     if (result.affected === 0) {
@@ -97,4 +97,4 @@ router.delete("/:id", authenticate, async (req: Request, res: Response, next: Ne
   }
 });
 
-export default router;
+module.exports = router;

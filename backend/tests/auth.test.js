@@ -1,6 +1,6 @@
-import request from "supertest";
 // TODO: Set up test app instance with test database
-// import app from "../src/server";
+// const request = require("supertest");
+// const app = require("../src/server");
 
 describe("Auth Endpoints", () => {
   describe("POST /api/auth/register", () => {

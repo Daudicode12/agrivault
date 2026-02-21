@@ -1,14 +1,8 @@
-import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { config } from "../config/env";
-import { AppError } from "./errorHandler";
+const jwt = require("jsonwebtoken");
+const { config } = require("../config/env");
+const { AppError } = require("./errorHandler");
 
-export interface AuthRequest extends Request {
-  userId?: string;
-  userEmail?: string;
-}
-
-export const authenticate = (req: AuthRequest, _res: Response, next: NextFunction) => {
+const authenticate = (req, _res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -17,7 +11,7 @@ export const authenticate = (req: AuthRequest, _res: Response, next: NextFunctio
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, config.jwt.secret) as { id: string; email: string };
+    const decoded = jwt.verify(token, config.jwt.secret);
 
     req.userId = decoded.id;
     req.userEmail = decoded.email;
@@ -35,8 +29,8 @@ export const authenticate = (req: AuthRequest, _res: Response, next: NextFunctio
  * Middleware to authenticate IoT devices via API key.
  * Devices send their key in x-api-key header.
  */
-export const authenticateDevice = (req: Request, _res: Response, next: NextFunction) => {
-  const apiKey = req.headers["x-api-key"] as string;
+const authenticateDevice = (req, _res, next) => {
+  const apiKey = req.headers["x-api-key"];
 
   if (!apiKey) {
     return next(new AppError("Device API key required.", 401));
@@ -44,6 +38,8 @@ export const authenticateDevice = (req: Request, _res: Response, next: NextFunct
 
   // TODO: Validate API key against database of registered devices
   // For now, we pass it through and validate in the service layer
-  (req as any).deviceApiKey = apiKey;
+  req.deviceApiKey = apiKey;
   next();
 };
+
+module.exports = { authenticate, authenticateDevice };

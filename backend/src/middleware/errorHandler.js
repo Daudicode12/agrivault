@@ -1,11 +1,7 @@
-import { Request, Response, NextFunction } from "express";
-import { logger } from "../utils/logger";
+const { logger } = require("../utils/logger");
 
-export class AppError extends Error {
-  public statusCode: number;
-  public isOperational: boolean;
-
-  constructor(message: string, statusCode: number, isOperational = true) {
+class AppError extends Error {
+  constructor(message, statusCode, isOperational = true) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;
@@ -13,12 +9,7 @@ export class AppError extends Error {
   }
 }
 
-export const errorHandler = (
-  err: Error | AppError,
-  _req: Request,
-  res: Response,
-  _next: NextFunction
-) => {
+const errorHandler = (err, _req, res, _next) => {
   if (err instanceof AppError) {
     logger.warn(`AppError: ${err.message} [${err.statusCode}]`);
     return res.status(err.statusCode).json({
@@ -31,3 +22,5 @@ export const errorHandler = (
     error: "Internal server error",
   });
 };
+
+module.exports = { AppError, errorHandler };

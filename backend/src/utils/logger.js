@@ -1,7 +1,7 @@
-import winston from "winston"; //winston is a logging library for node.js applications
-import { config } from "../config/env";
+const winston = require("winston");
+const { config } = require("../config/env");
 
-export const logger = winston.createLogger({
+const logger = winston.createLogger({
   level: config.nodeEnv === "development" ? "debug" : "info",
   format: winston.format.combine(
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
@@ -21,3 +21,5 @@ export const logger = winston.createLogger({
     }),
   ],
 });
+
+module.exports = { logger };

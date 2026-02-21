@@ -1,12 +1,12 @@
-import { Router, Request, Response, NextFunction } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { body, validationResult } from "express-validator";
-import { AppDataSource } from "../config/database";
-import { User } from "../entities/User";
-import { config } from "../config/env";
-import { AppError } from "../middleware/errorHandler";
-import { authenticate, AuthRequest } from "../middleware/auth";
+const { Router } = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { body, validationResult } = require("express-validator");
+const { AppDataSource } = require("../config/database");
+const { User } = require("../entities/User");
+const { config } = require("../config/env");
+const { AppError } = require("../middleware/errorHandler");
+const { authenticate } = require("../middleware/auth");
 
 const router = Router();
 const userRepo = () => AppDataSource.getRepository(User);
@@ -21,7 +21,7 @@ router.post(
     body("phone").optional().trim(),
     body("location").optional().trim(),
   ],
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -50,7 +50,7 @@ router.post(
       // Generate token
       const token = jwt.sign({ id: user.id, email: user.email }, config.jwt.secret, {
         expiresIn: config.jwt.expiresIn,
-      } as jwt.SignOptions);
+      });
 
       res.status(201).json({
         message: "Registration successful",
@@ -75,7 +75,7 @@ router.post(
     body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
     body("password").notEmpty().withMessage("Password is required"),
   ],
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -96,7 +96,7 @@ router.post(
 
       const token = jwt.sign({ id: user.id, email: user.email }, config.jwt.secret, {
         expiresIn: config.jwt.expiresIn,
-      } as jwt.SignOptions);
+      });
 
       res.json({
         message: "Login successful",
@@ -115,7 +115,7 @@ router.post(
 );
 
 // ── Get Profile ──
-router.get("/profile", authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get("/profile", authenticate, async (req, res, next) => {
   try {
     const user = await userRepo().findOne({
       where: { id: req.userId },
@@ -130,4 +130,4 @@ router.get("/profile", authenticate, async (req: AuthRequest, res: Response, nex
   }
 });
 
-export default router;
+module.exports = router;

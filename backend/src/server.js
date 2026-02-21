@@ -1,23 +1,22 @@
-import "reflect-metadata";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import { config } from "./config/env";
-import { AppDataSource } from "./config/database";
-import { logger } from "./utils/logger";
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const { config } = require("./config/env");
+const { AppDataSource } = require("./config/database");
+const { logger } = require("./utils/logger");
 
 // Route imports
-import authRoutes from "./routes/auth.routes";
-import storageUnitRoutes from "./routes/storageUnit.routes";
-import commodityRoutes from "./routes/commodity.routes";
-import sensorRoutes from "./routes/sensor.routes";
-import marketDataRoutes from "./routes/marketData.routes";
-import alertRoutes from "./routes/alert.routes";
-import recommendationRoutes from "./routes/recommendation.routes";
+const authRoutes = require("./routes/auth.routes");
+const storageUnitRoutes = require("./routes/storageUnit.routes");
+const commodityRoutes = require("./routes/commodity.routes");
+const sensorRoutes = require("./routes/sensor.routes");
+const marketDataRoutes = require("./routes/marketData.routes");
+const alertRoutes = require("./routes/alert.routes");
+const recommendationRoutes = require("./routes/recommendation.routes");
 
 // Middleware imports
-import { errorHandler } from "./middleware/errorHandler";
+const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
@@ -73,4 +72,4 @@ const startServer = async () => {
 
 startServer();
 
-export default app;
+module.exports = app;
