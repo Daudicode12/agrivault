@@ -38,6 +38,7 @@ export const marketAPI = {
     api.get(`/market-analysis/${commodityId}/chart`, { params }),
   forecast: (commodityId) => api.get(`/market-analysis/${commodityId}/forecast`),
   seasonal: (commodityId) => api.get(`/market-analysis/${commodityId}/seasonal`),
+  dashboard: (params) => api.get('/market-analysis/dashboard', { params }),
 };
 
 /* ── Commodities ──────────────────────── */

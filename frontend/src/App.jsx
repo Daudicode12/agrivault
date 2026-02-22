@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import MarketAnalysis from './pages/MarketAnalysis';
+import MarketDashboard from './pages/MarketDashboard';
 import CommodityDetail from './pages/CommodityDetail';
 import StorageUnits from './pages/StorageUnits';
 import Alerts from './pages/Alerts';
@@ -28,6 +29,10 @@ export default function App() {
         <Route path="/market/:commodityId" element={<CommodityDetail />} />
 
         {/* auth required */}
+        <Route
+          path="/market-dashboard"
+          element={<ProtectedRoute><MarketDashboard /></ProtectedRoute>}
+        />
         <Route
           path="/storage"
           element={<ProtectedRoute><StorageUnits /></ProtectedRoute>}
