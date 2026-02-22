@@ -4,10 +4,11 @@ import {
   Thermometer,
   Droplets,
   Plus,
+  Edit2,
   ShieldCheck,
   RefreshCw,
 } from 'lucide-react';
-import { storageAPI, recommendationAPI, sensorAPI } from '../services/api';
+import { storageAPI, recommendationAPI, sensorAPI, commodityAPI } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Loader from '../components/ui/Loader';
@@ -16,9 +17,19 @@ import styles from './StorageUnits.module.css';
 
 export default function StorageUnits() {
   const [units, setUnits] = useState([]);
+  const [commodities, setCommodities] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '', location: '', commodity_id: '', capacity: '' });
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ name: '', location: '', commodityId: '', capacityKg: '', currentStockKg: '' });
+
+  useEffect(() => {
+    // Fetch commodities for dropdown
+    commodityAPI.list().then((res) => {
+      setCommodities(res.data.commodities || []);
+    });
+    fetchUnits();
+  }, []);
 
   const fetchUnits = () => {
     setLoading(true);
@@ -29,22 +40,48 @@ export default function StorageUnits() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(fetchUnits, []);
-
-  const handleCreate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await storageAPI.create({
-        ...form,
-        capacity: Number(form.capacity),
-      });
-      toast.success('Storage unit created!');
-      setCreating(false);
-      setForm({ name: '', location: '', commodity_id: '', capacity: '' });
+      const payload = {
+        name: form.name,
+        location: form.location,
+        commodityId: form.commodityId,
+        capacityKg: form.capacityKg ? Number(form.capacityKg) : undefined,
+        currentStockKg: form.currentStockKg ? Number(form.currentStockKg) : undefined,
+      };
+
+      if (editingId) {
+        await storageAPI.update(editingId, payload);
+        toast.success('Storage unit updated!');
+      } else {
+        await storageAPI.create(payload);
+        toast.success('Storage unit created!');
+      }
+      
+      resetForm();
       fetchUnits();
     } catch (err) {
-      toast.error(err.message || 'Failed to create');
+      toast.error(err.message || 'Failed to save');
     }
+  };
+
+  const handleEdit = (unit) => {
+    setForm({
+      name: unit.name || '',
+      location: unit.location || '',
+      commodityId: unit.commodityId || '',
+      capacityKg: unit.capacityKg || '',
+      currentStockKg: unit.currentStockKg || '',
+    });
+    setEditingId(unit.id);
+    setShowForm(true);
+  };
+
+  const resetForm = () => {
+    setForm({ name: '', location: '', commodityId: '', capacityKg: '', currentStockKg: '' });
+    setEditingId(null);
+    setShowForm(false);
   };
 
   if (loading) return <Loader text="Loading storage units..." />;
@@ -52,46 +89,85 @@ export default function StorageUnits() {
   return (
     <div className={`${styles.page} fade-in`}>
       <div className={styles.toolbar}>
-        <button className={styles.addBtn} onClick={() => setCreating(!creating)}>
-          <Plus size={16} /> {creating ? 'Cancel' : 'Add Storage Unit'}
+        <h1 className={styles.title}>
+          <Warehouse size={28} /> Storage Units
+        </h1>
+        <button className={styles.addBtn} onClick={() => setShowForm(!showForm)}>
+          <Plus size={16} /> {showForm ? 'Cancel' : 'Add Storage Unit'}
         </button>
       </div>
 
-      {creating && (
+      {showForm && (
         <Card className={styles.formCard}>
-          <form onSubmit={handleCreate} className={styles.form}>
-            <input
-              placeholder="Unit Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              className={styles.input}
-            />
-            <input
-              placeholder="Location"
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              className={styles.input}
-            />
-            <input
-              placeholder="Commodity ID (UUID)"
-              value={form.commodity_id}
-              onChange={(e) => setForm({ ...form, commodity_id: e.target.value })}
-              className={styles.input}
-            />
-            <input
-              placeholder="Capacity (kg)"
-              type="number"
-              value={form.capacity}
-              onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-              className={styles.input}
-            />
-            <button type="submit" className={styles.submitBtn}>Create</button>
+          <h2>{editingId ? 'Edit Storage Unit' : 'New Storage Unit'}</h2>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label>Name *</label>
+                <input
+                  placeholder="e.g., Barn A"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Location</label>
+                <input
+                  placeholder="e.g., North Field"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Commodity</label>
+                <select
+                  value={form.commodityId}
+                  onChange={(e) => setForm({ ...form, commodityId: e.target.value })}
+                >
+                  <option value="">Select commodity</option>
+                  {commodities.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Capacity (kg)</label>
+                <input
+                  type="number"
+                  placeholder="e.g., 5000"
+                  value={form.capacityKg}
+                  onChange={(e) => setForm({ ...form, capacityKg: e.target.value })}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Current Stock (kg)</label>
+                <input
+                  type="number"
+                  placeholder="e.g., 3200"
+                  value={form.currentStockKg}
+                  onChange={(e) => setForm({ ...form, currentStockKg: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className={styles.formActions}>
+              <button type="button" className={styles.btnSecondary} onClick={resetForm}>
+                Cancel
+              </button>
+              <button type="submit" className={styles.btnPrimary}>
+                {editingId ? 'Update' : 'Create'} Storage Unit
+              </button>
+            </div>
           </form>
         </Card>
       )}
 
-      {units.length === 0 && !creating && (
+      {units.length === 0 && !showForm && (
         <Card>
           <p className={styles.empty}>
             No storage units yet. Create one to start tracking your stored commodities.
@@ -101,14 +177,14 @@ export default function StorageUnits() {
 
       <div className={styles.grid}>
         {units.map((unit) => (
-          <StorageCard key={unit.id} unit={unit} />
+          <StorageCard key={unit.id} unit={unit} onEdit={handleEdit} />
         ))}
       </div>
     </div>
   );
 }
 
-function StorageCard({ unit }) {
+function StorageCard({ unit, onEdit }) {
   const [rec, setRec] = useState(null);
   const [sensor, setSensor] = useState(null);
   const [loadingRec, setLoadingRec] = useState(false);
@@ -134,11 +210,20 @@ function StorageCard({ unit }) {
   return (
     <Card className={styles.unitCard}>
       <div className={styles.unitHeader}>
-        <Warehouse size={20} className={styles.unitIcon} />
-        <div>
-          <h3 className={styles.unitName}>{unit.name}</h3>
-          <span className={styles.unitLocation}>{unit.location || 'No location'}</span>
+        <div className={styles.unitHeaderLeft}>
+          <Warehouse size={20} className={styles.unitIcon} />
+          <div>
+            <h3 className={styles.unitName}>{unit.name}</h3>
+            <span className={styles.unitLocation}>{unit.location || 'No location'}</span>
+          </div>
         </div>
+        <button
+          className={styles.editBtn}
+          onClick={() => onEdit(unit)}
+          title="Edit storage unit"
+        >
+          <Edit2 size={16} />
+        </button>
       </div>
 
       {/* Sensor readings */}
@@ -156,8 +241,9 @@ function StorageCard({ unit }) {
       )}
 
       <div className={styles.meta}>
-        <span>Commodity: {unit.commodity_name || unit.commodity_id || '—'}</span>
-        <span>Capacity: {unit.capacity ? `${unit.capacity} kg` : '—'}</span>
+        <span>Commodity: {unit.commodity?.name || '—'}</span>
+        <span>Capacity: {unit.capacityKg ? `${unit.capacityKg} kg` : '—'}</span>
+        {unit.currentStockKg && <span>Stock: {unit.currentStockKg} kg</span>}
       </div>
 
       {/* Recommendation */}
