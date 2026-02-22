@@ -1,24 +1,57 @@
 /**
  * AgroVault Market Engine
  *
- * Fetches commodity prices from external sources and stores them.
- * Runs on a schedule (cron) every 2-4 hours.
+ * Collects commodity prices from external sources, runs price trend
+ * analysis, forecasting, seasonality detection, and generates
+ * sell / hold recommendations for farmers.
  *
- * Phases:
- * - Day 6: Basic data aggregation from external APIs
- * - Day 13: Moving averages, seasonality, price forecasting
+ * Modules:
+ * - analysis/trendAnalyzer  — SMA, EMA, momentum, volatility
+ * - analysis/forecaster     — Linear regression + WMA price forecasting
+ * - analysis/seasonality    — Monthly seasonal pattern detection
+ * - analysis/recommendationEngine — Composite sell / hold scoring
+ * - src/aggregator          — Orchestrates analysis for all commodities
+ *
+ * Schedules:
+ * - Every 4 hours: Full market analysis run
+ * - Daily at 06:00: Extended forecast generation
  */
 
-// const { CronJob } = require("cron");
+const { CronJob } = require("cron");
+const { config } = require("./config");
+const { runFullAnalysis } = require("./aggregator");
 
-console.log("AgroVault Market Engine - Scaffold");
-console.log("==================================");
-console.log("TODO: Implement market data scrapers (Day 6)");
-console.log("TODO: Implement price forecasting (Day 13)");
+console.log("AgroVault Market Engine v1.0");
+console.log("============================");
+console.log(`Analysis schedule : ${config.cron.analysisSchedule}`);
+console.log(`Forecast schedule : ${config.cron.forecastSchedule}`);
+console.log("");
 
-// Placeholder cron job - fetch market data every 4 hours
-// const job = new CronJob("0 */4 * * *", async () => {
-//   console.log("Fetching market data...");
-//   // await fetchAllSources();
-// });
-// job.start();
+// ── Scheduled analysis run (every 4 hours) ──
+const analysisJob = new CronJob(config.cron.analysisSchedule, async () => {
+  try {
+    await runFullAnalysis();
+  } catch (err) {
+    console.error("Analysis cron error:", err.message);
+  }
+});
+
+// ── CLI: run analysis immediately if called with --run ──
+const args = process.argv.slice(2);
+if (args.includes("--run")) {
+  console.log("Running analysis now (--run flag detected)...\n");
+  runFullAnalysis()
+    .then((results) => {
+      console.log(`\nDone. ${results.length} commodities analyzed.`);
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error("Fatal:", err);
+      process.exit(1);
+    });
+} else {
+  // Start cron schedule
+  analysisJob.start();
+  console.log("Cron scheduler started. Waiting for next scheduled run...");
+  console.log("Tip: run with --run to execute analysis immediately.\n");
+}
