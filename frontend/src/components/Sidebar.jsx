@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   TrendingUp,
   BarChart3,
+  Package,
   Warehouse,
   Bell,
   LogIn,
@@ -17,6 +18,7 @@ const publicLinks = [
 ];
 
 const authLinks = [
+  { to: '/commodities', icon: Package, label: 'Commodities' },
   { to: '/market-dashboard', icon: BarChart3, label: 'Market Dashboard' },
   { to: '/storage', icon: Warehouse, label: 'Storage Units' },
   { to: '/alerts', icon: Bell, label: 'Alerts' },

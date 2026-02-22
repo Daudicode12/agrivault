@@ -45,6 +45,9 @@ export const marketAPI = {
 export const commodityAPI = {
   list: () => api.get('/commodities'),
   get: (id) => api.get(`/commodities/${id}`),
+  create: (data) => api.post('/commodities', data),
+  update: (id, data) => api.put(`/commodities/${id}`, data),
+  delete: (id) => api.delete(`/commodities/${id}`),
 };
 
 /* ── Market Data ──────────────────────── */
