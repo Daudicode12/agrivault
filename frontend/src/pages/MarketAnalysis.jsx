@@ -1,29 +1,37 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Minus, Search, ArrowRight } from 'lucide-react';
-import { marketAPI } from '../services/api';
+import { TrendingUp, TrendingDown, Minus, Search, ArrowRight, Package } from 'lucide-react';
+import { marketAPI, commodityAPI } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Loader from '../components/ui/Loader';
 import styles from './MarketAnalysis.module.css';
 
 export default function MarketAnalysis() {
-  const [data, setData] = useState(null);
+  const [marketData, setMarketData] = useState(null);
+  const [commodities, setCommodities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    marketAPI
-      .overview()
-      .then((res) => setData(res.data))
-      .catch(() => {})
+    Promise.all([
+      marketAPI.overview().catch(() => null),
+      commodityAPI.list().catch(() => null),
+    ])
+      .then(([marketRes, commodityRes]) => {
+        if (marketRes?.data) setMarketData(marketRes.data);
+        if (commodityRes?.data) setCommodities(commodityRes.data.commodities || []);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <Loader text="Analyzing markets..." />;
 
-  const commodities = data?.commodities || data?.data?.commodities || [];
-  const filtered = commodities.filter((c) => {
+  // Use market data if available, otherwise use commodities list
+  const marketCommodities = marketData?.commodities || marketData?.data?.commodities || [];
+  const displayList = marketCommodities.length > 0 ? marketCommodities : commodities;
+  
+  const filtered = displayList.filter((c) => {
     const name = (c.commodityName || c.commodity_name || c.name || '').toLowerCase();
     return name.includes(search.toLowerCase());
   });
@@ -55,12 +63,22 @@ export default function MarketAnalysis() {
           <span className={styles.colAction}></span>
         </div>
 
-        {filtered.length === 0 && (
-          <p className={styles.empty}>No commodities found.</p>
+        {filtered.length === 0 && commodities.length === 0 && (
+          <div className={styles.emptyState}>
+            <Package size={48} className={styles.emptyIcon} />
+            <p className={styles.emptyText}>No commodities available.</p>
+            <Link to="/commodities" className={styles.emptyLink}>
+              Add Commodities <ArrowRight size={16} />
+            </Link>
+          </div>
+        )}
+
+        {filtered.length === 0 && commodities.length > 0 && (
+          <p className={styles.empty}>No commodities match your search.</p>
         )}
 
         {filtered.map((item) => {
-          const id = item.commodityId || item.commodity_id;
+          const id = item.commodityId || item.commodity_id || item.id;
           const name = item.commodityName || item.commodity_name || item.name;
           const trend = item.trend || {};
           const rec = item.recommendation || {};
@@ -68,7 +86,7 @@ export default function MarketAnalysis() {
           const direction = trend.direction || 'stable';
           const vol = trend.volatility;
           const pct = trend.percentChange ?? trend.pct_change;
-          const recAction = rec.action || '—';
+          const recAction = rec.action || (marketCommodities.length > 0 ? '—' : 'View');
           const recVariant = recAction.toLowerCase().replace(/ /g, '_');
 
           const DirIcon =
