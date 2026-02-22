@@ -10,6 +10,7 @@
  *   GET  /api/market-analysis/:commodityId/chart — Price chart data with MA overlays
  *   GET  /api/market-analysis/:commodityId/forecast — Price forecast only
  *   GET  /api/market-analysis/:commodityId/seasonal — Seasonal patterns
+ * creating the market analysis route, which will call the market analysis service functions to get the data and return it in the API response. The rout will handle errors and return appropriate status messages if data is insufficient or if the commodity is not found
  */
 
 const { Router } = require("express");

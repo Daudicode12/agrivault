@@ -27,6 +27,7 @@ const config = {
   cron: {
     analysisSchedule: "0 */4 * * *",   // Run analysis every 4 hours
     forecastSchedule: "0 6 * * *",      // Run forecasts daily at 6 AM
+    scrapeSchedule: "0 */6 * * *",      // Scrape market data every 6 hours
   },
 };
 
