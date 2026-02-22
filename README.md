@@ -48,7 +48,10 @@ AgroVault is a full-stack platform (mobile app + backend + IoT hardware) that gi
 - **Receive spoilage alerts** — When temperature or humidity drifts outside the safe range for the stored commodity, the system generates an alert with severity level, description, and the storage unit involved. Alerts can be filtered by type, marked as read individually or in bulk.
 - **Check market prices** — Browse current and historical commodity prices across different markets. Filter by commodity, market, date range. Use this to decide when and where to sell.
 - **Submit manual price entries** — If a farmer observes a price at a local market, they can record it to contribute to the platform's price data.
-- **Get sell/hold recommendations** *(Phase 3)* — The decision engine will combine spoilage risk and market trends to advise farmers: "Sell now at Market X" or "Hold — prices are rising and your storage is safe for 30 more days."
+- **Get sell/hold recommendations** — The decision engine combines spoilage risk, price trends, forecasts, and seasonal patterns to advise: "Sell now" or "Hold — prices are rising and your storage is safe for 30 more days."
+- **View market analysis** — See trend direction, moving averages, momentum, and volatility for any commodity. Understand if prices are rising, falling, or stable.
+- **Check price forecasts** — View predicted prices for the next 7–90 days with confidence intervals. Helps plan when to take produce to market.
+- **Understand seasonal patterns** — See which months typically have the highest and lowest prices for each crop. Know how many months until the next peak selling window.
 
 ### For IoT Devices
 
@@ -127,8 +130,11 @@ agrovault/
 │   └── platformio.ini
 │
 ├── market-engine/            # Market data collection & analysis
-│   ├── src/index.js          # Scheduler / entry point
-│   └── scrapers/base.js      # Scraper interface definition
+│   ├── analysis/             # Analysis modules (trend, forecast, seasonal, recommendations)
+│   ├── scrapers/base.js      # Scraper interface definition
+│   ├── src/index.js          # Cron scheduler entry point
+│   ├── src/aggregator.js     # Orchestrates analysis for all commodities
+│   └── tests/                # 30 unit tests for analysis modules
 │
 ├── frontend/                 # Flutter mobile app (Android + iOS)
 │
@@ -272,7 +278,17 @@ All endpoints are prefixed with `/api`.
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/recommendations/:unitId` | JWT | Get recommendation for a storage unit *(Phase 3)* |
+| `GET` | `/recommendations/:unitId` | JWT | Get personalised sell/hold recommendation for a storage unit |
+
+### Market Analysis
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/market-analysis/overview` | Public | Market snapshot — latest price, trend, weekly/monthly change for all commodities |
+| `GET` | `/market-analysis/:commodityId` | Public | Full analysis — trend + forecast + seasonal for one commodity |
+| `GET` | `/market-analysis/:commodityId/chart` | Public | Price chart data with SMA/EMA overlays (`?days=90`) |
+| `GET` | `/market-analysis/:commodityId/forecast` | Public | Price forecast with confidence intervals (`?days=30`) |
+| `GET` | `/market-analysis/:commodityId/seasonal` | Public | Seasonal patterns — peak/valley months, sell/hold signal |
 
 ### Health Check
 
@@ -401,21 +417,609 @@ The sensor reads every **30 seconds** and POSTs to `POST /api/sensor-readings` w
 
 ## Market Engine
 
-The `market-engine/` service fetches commodity prices from external sources on a schedule.
+The `market-engine/` is the **intelligence core** of AgroVault. It analyses commodity price data and produces actionable sell/hold recommendations so farmers know the best time to sell their produce.
 
-**Planned data sources:**
-- Kenya National Bureau of Statistics API
-- FAO price data
-- EAGC market prices
-- Manual CSV import
+### What It Does
 
-Scrapers implement a common interface that returns normalized `{ commodityName, price, currency, market, source, recordedAt }` objects.
+The market engine answers **one critical question** for the farmer:
+
+> *"Should I sell my crop now, or hold it for a better price?"*
+
+It does this by running four types of analysis on historical price data:
+
+| Analysis | What It Computes | Why It Matters |
+|---|---|---|
+| **Trend Analysis** | Moving averages (7/14/30-day SMA, 14-day EMA), price momentum, volatility, support/resistance levels | Tells the farmer if prices are currently going up, down, or sideways |
+| **Price Forecasting** | Predicted prices for the next 7–90 days using linear regression blended with weighted moving averages | Helps the farmer decide if waiting will pay off |
+| **Seasonal Patterns** | Monthly price indices based on Kenya's agricultural calendar (long rains Mar–May, short rains Oct–Dec) | Identifies peak-price months (e.g., May for Maize) and low-price months (e.g., Sep for Maize) |
+| **Sell/Hold Recommendation** | Weighted composite score combining trend (30%), forecast (25%), seasonality (20%), and storage risk (25%) | A single clear recommendation: SELL, CONSIDER_SELLING, HOLD, or STRONG_HOLD |
+
+### How Recommendations Work
+
+The recommendation engine scores four factors on a scale of -100 (strong hold) to +100 (strong sell):
+
+```
+   Factor         Weight    Positive Score → SELL        Negative Score → HOLD
+   ─────────────  ──────    ──────────────────────       ─────────────────────
+   Price Trend     30%      Price above 30-day SMA       Price below 30-day SMA
+                            Falling trend (sell before    Rising trend (wait for
+                            further drop)                 higher price)
+
+   Forecast        25%      Forecast shows decline        Forecast shows increase
+
+   Seasonality     20%      Current month is a            Current month is a
+                            peak-price month              low-price month
+
+   Storage Risk    25%      Nearing max shelf life,       Plenty of storage time,
+                            high spoilage risk from       low spoilage risk
+                            sensor data
+```
+
+The weighted composite score maps to a recommendation:
+
+| Score Range | Recommendation | Urgency |
+|---|---|---|
+| ≥ 30 | **SELL** | High |
+| 15 to 29 | **SELL** | Moderate |
+| 5 to 14 | **CONSIDER_SELLING** | Low |
+| -4 to 4 | **HOLD** | Low |
+| -15 to -5 | **HOLD** | Moderate |
+| ≤ -16 | **STRONG_HOLD** | High |
+
+Each recommendation comes with a **plain-English summary**, e.g.:
+> *"We strongly recommend holding your Maize. Prices typically peak around May, which is 3 month(s) away. Our forecast shows prices are likely to rise by 8.5% over the next 30 days."*
+
+### Kenyan Seasonal Calendar
+
+The engine has built-in seasonal factors for 7 Kenyan crops, calibrated to the country's two rainy seasons:
+
+- **Long rains** (March–May) → harvest June–August → **prices drop** after harvest
+- **Short rains** (October–December) → harvest January–February → **prices drop** after harvest
+- **Lean season** (March–May, November–December) → low supply → **prices peak**
+
+| Commodity | Peak Months (Sell!) | Valley Months (Hold!) |
+|---|---|---|
+| Maize | April, May, March | September, August, July |
+| Beans | May, April, December | August, September, February |
+| Rice | May, April, June | September, August, October |
+| Irish Potatoes | March, December, February | July, August, June |
+| Coffee (dried) | July, June, August | March, February, November |
+
+### Analysis Modules
+
+```
+market-engine/
+├── analysis/
+│   ├── index.js                # Public API — re-exports all functions
+│   ├── trendAnalyzer.js        # SMA, EMA, momentum, volatility, support/resistance
+│   ├── forecaster.js           # Linear regression + WMA price forecasting
+│   ├── seasonality.js          # Monthly seasonal indices & timing signals
+│   └── recommendationEngine.js # Composite sell/hold scoring engine
+├── scrapers/
+│   └── base.js                 # Scraper interface (KNBS, FAO, EAGC — planned)
+├── src/
+│   ├── index.js                # Cron scheduler entry point
+│   ├── config.js               # Supabase connection & analysis config
+│   └── aggregator.js           # Orchestrates analysis for all commodities
+├── tests/
+│   └── analysis.test.js        # 30 unit tests for all modules
+└── package.json
+```
+
+### Running the Market Engine
 
 ```bash
 cd market-engine
 npm install
+
+# Run analysis immediately (one-shot)
+npm run analyze
+
+# Start cron scheduler (analyses every 4 hours)
 npm run dev
+
+# Run tests (30 tests covering all modules)
+npm test
 ```
+
+### Seeding Market Data for Development
+
+The analysis needs historical price data. A seeder generates 180 days of realistic prices for all commodities:
+
+```bash
+cd backend
+npm run seed          # Seed commodities + demo user first
+npm run seed:market   # Generate 180 days of price data
+```
+
+This creates ~126 price records per commodity (simulating ~5 market days/week) with:
+- Realistic seasonal price variation matching Kenya's agricultural calendar
+- Random walk with mean reversion (prices fluctuate but gravitate toward seasonal norms)
+- Multiple markets: Nairobi, Mombasa, Kisumu, Nakuru, Eldoret
+
+---
+
+## Market Analysis API Reference
+
+All market analysis endpoints are prefixed with `/api/market-analysis`. These are **public** endpoints (no auth required) — any farmer can view market data.
+
+### Market Analysis Endpoints
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/market-analysis/overview` | Public | Market snapshot for ALL commodities |
+| `GET` | `/market-analysis/:commodityId` | Public | Full analysis — trend + forecast + seasonal |
+| `GET` | `/market-analysis/:commodityId/chart` | Public | Price chart data with moving average overlays |
+| `GET` | `/market-analysis/:commodityId/forecast` | Public | Price forecast only (next 7–90 days) |
+| `GET` | `/market-analysis/:commodityId/seasonal` | Public | Seasonal patterns & sell/hold timing |
+| `GET` | `/recommendations/:unitId` | **JWT** | Personalised sell/hold for a specific storage unit |
+
+---
+
+## Testing Market Analysis APIs in Postman
+
+Below is a step-by-step Postman testing guide. **Setup first:**
+
+1. Start the backend: `cd backend && npm run dev`
+2. Seed data: `npm run seed && npm run seed:market`
+3. Set Postman base URL variable: `{{baseUrl}}` = `http://localhost:3000/api`
+
+### Step 1: Get a Commodity ID
+
+**Request:**
+```
+GET {{baseUrl}}/commodities
+```
+
+**Expected Response (200):**
+```json
+{
+  "commodities": [
+    {
+      "id": "a1b2c3d4-...",
+      "name": "Maize",
+      "category": "Grain",
+      "optimalTempMin": 10,
+      "optimalTempMax": 15,
+      "optimalHumidityMin": 12,
+      "optimalHumidityMax": 14,
+      "maxStorageDays": 365,
+      "unit": "bag (90kg)"
+    },
+    { "id": "...", "name": "Beans", ... },
+    { "id": "...", "name": "Coffee (dried)", ... }
+  ]
+}
+```
+Copy one of the `id` values (e.g. the Maize ID) — you'll use it in the next requests.
+
+---
+
+### Step 2: Market Overview (All Commodities)
+
+**Request:**
+```
+GET {{baseUrl}}/market-analysis/overview
+```
+
+**Expected Response (200):**
+```json
+{
+  "overview": [
+    {
+      "commodity": {
+        "id": "a1b2c3d4-...",
+        "name": "Maize",
+        "category": "Grain",
+        "unit": "bag (90kg)"
+      },
+      "latestPrice": 3842.50,
+      "latestDate": "2026-02-22T10:00:00.000Z",
+      "market": "Nakuru",
+      "weeklyChangePct": 2.35,
+      "monthlyChangePct": -1.80,
+      "trend": "rising"
+    },
+    {
+      "commodity": { "name": "Beans", ... },
+      "latestPrice": 8320.00,
+      "weeklyChangePct": -3.10,
+      "trend": "falling"
+    }
+  ],
+  "count": 7,
+  "generatedAt": "2026-02-22T12:00:00.000Z"
+}
+```
+
+**What to look for:**
+- Each commodity shows its latest price, which market reported it, and weekly/monthly % change
+- `trend` will be `"rising"`, `"falling"`, or `"stable"` based on the weekly change
+- `weeklyChangePct` / `monthlyChangePct` will be `null` if there isn't enough historical data
+
+---
+
+### Step 3: Full Analysis for One Commodity
+
+**Request:**
+```
+GET {{baseUrl}}/market-analysis/{{commodityId}}
+```
+Replace `{{commodityId}}` with the Maize UUID from Step 1.
+
+**Expected Response (200):**
+```json
+{
+  "status": "ok",
+  "commodity": {
+    "id": "a1b2c3d4-...",
+    "name": "Maize",
+    "category": "Grain",
+    "maxStorageDays": 365
+  },
+  "dataPoints": 126,
+  "trend": {
+    "direction": "rising",
+    "currentPrice": 3842.50,
+    "latestDate": "2026-02-22T10:00:00.000Z",
+    "movingAverages": {
+      "sma7": 3810.25,
+      "sma14": 3785.50,
+      "sma30": 3720.00,
+      "ema14": 3805.10
+    },
+    "momentum": {
+      "7day": 3.45,
+      "14day": 5.20
+    },
+    "volatility": {
+      "dailyVolatility": 1.85,
+      "annualizedVolatility": 29.35,
+      "periodDays": 30
+    },
+    "supportResistance": {
+      "support": 3650.00,
+      "resistance": 3920.00
+    },
+    "priceRange": {
+      "high": 3920.00,
+      "low": 3580.00,
+      "average": 3750.25
+    }
+  },
+  "forecast": {
+    "direction": "moderate_increase",
+    "priceChangePct": 4.20,
+    "priceChange": 161.50,
+    "horizonDays": 30,
+    "reliability": "moderate",
+    "rSquared": 0.52,
+    "predictions": [
+      {
+        "date": "2026-02-23",
+        "predictedPrice": 3855.00,
+        "confidence90": { "lower": 3780.00, "upper": 3930.00 },
+        "dayAhead": 1
+      },
+      {
+        "date": "2026-02-24",
+        "predictedPrice": 3868.00,
+        "confidence90": { "lower": 3770.00, "upper": 3966.00 },
+        "dayAhead": 2
+      }
+    ]
+  },
+  "seasonal": {
+    "currentMonth": "February",
+    "currentFactor": 1.0,
+    "seasonalSignal": "neutral",
+    "peakMonths": [
+      { "month": "May", "factor": 1.1 },
+      { "month": "April", "factor": 1.08 },
+      { "month": "March", "factor": 1.05 }
+    ],
+    "valleyMonths": [
+      { "month": "September", "factor": 0.88 },
+      { "month": "August", "factor": 0.9 },
+      { "month": "July", "factor": 0.95 }
+    ],
+    "nextPeakMonth": "March",
+    "monthsUntilPeak": 1,
+    "source": "computed"
+  },
+  "analyzedAt": "2026-02-22T12:00:00.000Z"
+}
+```
+
+**What to look for:**
+- `trend.direction`: `"rising"`, `"falling"`, or `"stable"`
+- `trend.movingAverages`: If `sma7 > sma30`, short-term prices are above the long-term average (bullish)
+- `trend.momentum.7day`: Positive = prices going up, negative = going down
+- `forecast.direction`: `"strong_increase"`, `"moderate_increase"`, `"stable"`, `"moderate_decrease"`, `"strong_decrease"`
+- `forecast.predictions[]`: Day-by-day predicted prices with 90% confidence bands
+- `seasonal.nextPeakMonth` + `monthsUntilPeak`: When to sell for best seasonal price
+- If data is insufficient, `status` will be `"insufficient_data"` with an explanation
+
+---
+
+### Step 4: Price Chart Data
+
+**Request:**
+```
+GET {{baseUrl}}/market-analysis/{{commodityId}}/chart?days=90
+```
+
+**Query Parameters:**
+- `days` — Number of days of history (default: 90, max: 365)
+
+**Expected Response (200):**
+```json
+{
+  "status": "ok",
+  "prices": [
+    { "date": "2025-11-25T...", "price": 3520.00, "market": "Nairobi", "source": "seed" },
+    { "date": "2025-11-26T...", "price": 3545.00, "market": "Kisumu", "source": "seed" }
+  ],
+  "movingAverages": {
+    "sma7": [{ "date": "2025-12-01T...", "sma": 3530.50 }, ...],
+    "sma14": [...],
+    "sma30": [...]
+  },
+  "ema": [{ "date": "2025-11-25T...", "ema": 3520.00 }, ...],
+  "dataPoints": 63,
+  "periodDays": 90
+}
+```
+
+**What to look for:**
+- `prices[]`: Raw price points for plotting the main chart line
+- `movingAverages.sma7/14/30`: Overlay lines — SMA7 tracks recent movement, SMA30 shows the longer trend
+- `ema[]`: Exponential moving average — reacts faster to recent price changes
+- Use these arrays to build a line chart in the frontend
+
+---
+
+### Step 5: Price Forecast
+
+**Request:**
+```
+GET {{baseUrl}}/market-analysis/{{commodityId}}/forecast?days=30
+```
+
+**Query Parameters:**
+- `days` — Forecast horizon (default: 30, max: 90)
+
+**Expected Response (200):**
+```json
+{
+  "status": "ok",
+  "commodity": "Maize",
+  "currentPrice": 3842.50,
+  "method": "blended_regression_wma",
+  "regression": {
+    "slope": 3.85,
+    "intercept": 3350.00,
+    "rSquared": 0.52,
+    "dailyTrend": "upward",
+    "dailyChangeRate": 3.85
+  },
+  "forecast": {
+    "horizonDays": 30,
+    "direction": "moderate_increase",
+    "priceChange": 161.50,
+    "priceChangePct": 4.20,
+    "predictions": [
+      {
+        "date": "2026-02-23",
+        "predictedPrice": 3855.00,
+        "confidence90": { "lower": 3780.00, "upper": 3930.00 },
+        "dayAhead": 1
+      }
+    ]
+  },
+  "confidence": {
+    "rSquared": 0.52,
+    "reliability": "moderate",
+    "dataPoints": 126
+  }
+}
+```
+
+**What to look for:**
+- `regression.slope`: Daily price change rate in KES. Positive = upward, negative = downward
+- `regression.rSquared`: How well the model fits (0 = poor, 1 = perfect). Above 0.7 = high confidence
+- `confidence.reliability`: `"high"` (R² > 0.7), `"moderate"` (R² > 0.4), `"low"` (R² ≤ 0.4)
+- `forecast.predictions[].confidence90`: 90% of the time, the actual price will fall in this range
+- Notice confidence bands **widen** for dates further in the future (more uncertainty)
+- Returns `status: "insufficient_data"` if fewer than 14 price records exist
+
+---
+
+### Step 6: Seasonal Patterns
+
+**Request:**
+```
+GET {{baseUrl}}/market-analysis/{{commodityId}}/seasonal
+```
+
+**Expected Response (200):**
+```json
+{
+  "status": "ok",
+  "commodity": "Maize",
+  "currentMonth": "February",
+  "currentFactor": 1.0,
+  "seasonalSignal": "neutral",
+  "peakMonths": [
+    { "month": "May", "factor": 1.1 },
+    { "month": "April", "factor": 1.08 },
+    { "month": "March", "factor": 1.05 }
+  ],
+  "valleyMonths": [
+    { "month": "September", "factor": 0.88 },
+    { "month": "August", "factor": 0.9 },
+    { "month": "July", "factor": 0.95 }
+  ],
+  "nextPeakMonth": "March",
+  "monthsUntilPeak": 1,
+  "allFactors": {
+    "January": 0.98,
+    "February": 1.0,
+    "March": 1.05,
+    "April": 1.08,
+    "May": 1.1,
+    "June": 1.03,
+    "July": 0.95,
+    "August": 0.9,
+    "September": 0.88,
+    "October": 0.93,
+    "November": 0.98,
+    "December": 1.02
+  },
+  "source": "computed"
+}
+```
+
+**What to look for:**
+- `currentFactor`: > 1.0 means current month has above-average prices (good to sell), < 1.0 means below average (hold)
+- `seasonalSignal`: `"strong_sell"` (factor ≥ 1.05), `"sell"` (≥ 1.02), `"neutral"`, `"hold"` (≤ 0.97), `"strong_hold"` (≤ 0.93)
+- `peakMonths`: Top 3 months when prices are highest — aim to sell during these
+- `valleyMonths`: Bottom 3 months when prices are lowest — avoid selling during these
+- `nextPeakMonth` + `monthsUntilPeak`: Tells farmer how long to hold for peak pricing
+- `source`: `"computed"` (calculated from actual data) or `"default"` (using Kenya seasonal defaults)
+
+---
+
+### Step 7: Sell/Hold Recommendation for a Storage Unit (Requires Auth)
+
+This is the **most important endpoint** — it gives a farmer a personalised recommendation for their stored produce.
+
+**First, log in to get a token:**
+```
+POST {{baseUrl}}/auth/login
+Body (JSON):
+{
+  "email": "farmer@agrovault.dev",
+  "password": "password123"
+}
+```
+Copy the `token` from the response.
+
+**Then get your storage unit ID:**
+```
+GET {{baseUrl}}/storage-units
+Headers: Authorization: Bearer {{token}}
+```
+Copy a `storageUnit.id`.
+
+**Request the recommendation:**
+```
+GET {{baseUrl}}/recommendations/{{storageUnitId}}
+Headers: Authorization: Bearer {{token}}
+```
+
+**Expected Response (200):**
+```json
+{
+  "status": "ok",
+  "storageUnit": {
+    "id": "unit-uuid-...",
+    "name": "Barn A - Maize Storage",
+    "commodity": "Maize",
+    "currentStockKg": 3200,
+    "daysInStorage": 45
+  },
+  "recommendation": "HOLD",
+  "urgency": "moderate",
+  "confidence": "high",
+  "compositeScore": -12.5,
+  "summary": "We recommend holding your Maize for now. Prices typically peak around May, which is 3 month(s) away. Our forecast shows prices are likely to rise by 4.2% over the next 30 days.",
+  "commodity": "Maize",
+  "currentPrice": 3842.50,
+  "scores": {
+    "trend": {
+      "score": -20,
+      "weight": 0.3,
+      "reasons": [
+        "Price trend is rising — holding may yield better returns",
+        "Strong upward momentum (6.2% in 7 days) — prices still climbing"
+      ]
+    },
+    "forecast": {
+      "score": -15,
+      "weight": 0.25,
+      "reasons": [
+        "Forecast shows 4.2% price increase — consider holding"
+      ]
+    },
+    "seasonal": {
+      "score": -20,
+      "weight": 0.2,
+      "reasons": [
+        "February typically has below-average prices — consider holding",
+        "Prices typically peak in May (3 months away)"
+      ]
+    },
+    "storage": {
+      "score": -5,
+      "weight": 0.25,
+      "reasons": [
+        "Plenty of storage life remaining (320 days) — no urgency to sell"
+      ]
+    }
+  },
+  "analysis": {
+    "trend": {
+      "direction": "rising",
+      "movingAverages": { "sma7": 3810.25, "sma14": 3785.50, "sma30": 3720.00 },
+      "momentum": { "7day": 6.2, "14day": 8.1 },
+      "priceRange": { "high": 3920.00, "low": 3580.00, "average": 3750.25 }
+    },
+    "forecast": {
+      "direction": "moderate_increase",
+      "priceChangePct": 4.2,
+      "reliability": "moderate",
+      "predictions": [
+        { "date": "2026-02-23", "predictedPrice": 3855.00, "dayAhead": 1 }
+      ]
+    },
+    "seasonal": {
+      "currentMonth": "February",
+      "seasonalSignal": "hold",
+      "nextPeakMonth": "May",
+      "monthsUntilPeak": 3
+    }
+  },
+  "generatedAt": "2026-02-22T12:00:00.000Z"
+}
+```
+
+**What to look for:**
+- `recommendation`: The action — `"SELL"`, `"CONSIDER_SELLING"`, `"HOLD"`, or `"STRONG_HOLD"`
+- `urgency`: `"high"`, `"moderate"`, or `"low"`
+- `summary`: **Human-readable advice** you can show directly to the farmer in the app UI
+- `compositeScore`: The raw weighted score (positive = sell, negative = hold)
+- `scores.*.reasons[]`: Detailed explanations for each factor — useful for an "Why?" expandable section in the UI
+- `storageUnit.daysInStorage`: How long the produce has been stored (affects storage risk score)
+- If spoilage risk is detected from sensor data, the storage score will be higher (push toward selling)
+
+---
+
+### Postman Quick-Test Summary
+
+| # | Request | What You're Testing |
+|---|---|---|
+| 1 | `GET /commodities` | Get commodity IDs for subsequent requests |
+| 2 | `GET /market-analysis/overview` | Dashboard view — all commodities at a glance |
+| 3 | `GET /market-analysis/:id` | Deep dive — full trend + forecast + seasonal for one crop |
+| 4 | `GET /market-analysis/:id/chart?days=90` | Chart data — plot price lines with moving averages |
+| 5 | `GET /market-analysis/:id/forecast?days=30` | Forecast — predicted prices with confidence intervals |
+| 6 | `GET /market-analysis/:id/seasonal` | Seasonal calendar — peak/valley months |
+| 7 | `POST /auth/login` | Get JWT token for authenticated endpoints |
+| 8 | `GET /storage-units` | Get storage unit IDs (needs token) |
+| 9 | `GET /recommendations/:unitId` | **The big one** — personalised sell/hold recommendation |
+
+> **Tip:** If you see `"status": "insufficient_data"`, run `npm run seed:market` in the backend directory to generate 180 days of historical prices.
 
 ---
 
@@ -457,9 +1061,14 @@ All tables have **RLS enabled** with fine-grained policies:
 
 ### Phase 3 — Intelligence & Integration (Days 12–16)
 
+- [x] Market price trend analysis (SMA, EMA, momentum, volatility)
+- [x] Price forecasting (linear regression + WMA blending + seasonal adjustment)
+- [x] Seasonal pattern detection (Kenya agricultural calendar)
+- [x] Combined sell/hold recommendation engine (4-factor weighted scoring)
+- [x] Market analysis API endpoints (6 routes)
+- [x] Market data seeder (180 days of realistic prices)
+- [x] 30 unit tests for all analysis modules
 - [ ] Spoilage prediction model (moving averages + rule engine)
-- [ ] Market price forecasting (trend analysis)
-- [ ] Combined decision / recommendation engine
 - [ ] Flutter mobile app (dashboard, alerts, market view)
 
 ### Phase 4 — Testing, Polish & Launch (Days 17–21)
