@@ -1,0 +1,154 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+  width: fit-content;
+}
+.back:hover { color: var(--text-accent); }
+
+.hero {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.heroLeft {
+  flex: 1;
+  min-width: 280px;
+}
+
+.commodityName {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.heroPrice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.price {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--green-400);
+}
+
+.up { color: var(--green-400); font-weight: 600; font-size: 0.95rem; }
+.down { color: var(--red-400); font-weight: 600; font-size: 0.95rem; }
+
+.recCard {
+  min-width: 280px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.confBar {
+  position: relative;
+  height: 6px;
+  background: var(--slate-700);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.confBar span {
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.confFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-500), var(--gold-400));
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.recSummary {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.miniStat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.miniIcon {
+  color: var(--green-400);
+}
+
+.miniValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.miniLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chartTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.chartSub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.timingText {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px;
+}
+
+@media (max-width: 768px) {
+  .hero { flex-direction: column; }
+  .recCard { max-width: none; }
+  .price { font-size: 1.5rem; }
+}
