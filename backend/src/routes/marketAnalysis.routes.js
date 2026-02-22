@@ -34,23 +34,25 @@ const router = Router();
 // Authenticated: shows market data filtered by county and commodity with recommendations
 router.get("/dashboard", authenticate, async (req, res, next) => {
   try {
-    const { commodityId, county, days = 90 } = req.query;
+    const { commodity, county, days = 90 } = req.query;
 
-    if (!commodityId) {
-      throw new AppError("commodityId query parameter is required", 400);
+    if (!commodity) {
+      throw new AppError("commodity query parameter is required", 400);
     }
 
-    // Verify commodity exists
+    // Find commodity by name (case-insensitive)
     const { supabase } = require("../config/supabase");
-    const { data: commodity, error: commErr } = await supabase
+    const { data: commodityData, error: commErr } = await supabase
       .from("agro_commodities")
       .select("id, name, category, unit, maxStorageDays")
-      .eq("id", commodityId)
+      .ilike("name", commodity)
       .maybeSingle();
 
-    if (commErr || !commodity) {
-      throw new AppError("Commodity not found", 404);
+    if (commErr || !commodityData) {
+      throw new AppError(`Commodity "${commodity}" not found. Available: Maize, Wheat, Rice, Beans, Sorghum, Irish Potatoes, Coffee`, 404);
     }
+
+    const commodityId = commodityData.id;
 
     // Fetch price history with optional county filter
     const lookbackDays = Math.min(parseInt(days, 10), 365);
@@ -74,8 +76,8 @@ router.get("/dashboard", authenticate, async (req, res, next) => {
     if (!priceHistory || priceHistory.length < 5) {
       return res.json({
         status: "insufficient_data",
-        message: `Insufficient market data for ${commodity.name}${county ? ` in ${county}` : ""}. Only ${priceHistory?.length || 0} records found.`,
-        commodity,
+        message: `Insufficient market data for ${commodityData.name}${county ? ` in ${county}` : ""}. Only ${priceHistory?.length || 0} records found.`,
+        commodity: commodityData,
         county: county || "All counties",
         priceHistory: priceHistory || [],
         dataPoints: priceHistory?.length || 0,
@@ -86,14 +88,14 @@ router.get("/dashboard", authenticate, async (req, res, next) => {
     const { analyzeTrend, forecastPrices, analyzeSeasonalTiming, getSeasonalFactors, generateRecommendation } = require(analysisPath);
     
     const trend = analyzeTrend(priceHistory);
-    const seasonalFactors = getSeasonalFactors(commodity.name, priceHistory);
+    const seasonalFactors = getSeasonalFactors(commodityData.name, priceHistory);
     const forecast = priceHistory.length >= 14 ? forecastPrices(priceHistory, 30, seasonalFactors.factors) : null;
-    const seasonal = analyzeSeasonalTiming(commodity.name, priceHistory);
+    const seasonal = analyzeSeasonalTiming(commodityData.name, priceHistory);
     
     // Generate recommendation (without storage context for general market view)
     const recommendation = generateRecommendation({
       prices: priceHistory,
-      commodityName: commodity.name,
+      commodityName: commodityData.name,
       storageInfo: null,
     });
 
@@ -108,7 +110,7 @@ router.get("/dashboard", authenticate, async (req, res, next) => {
 
     res.json({
       status: "ok",
-      commodity,
+      commodity: commodityData,
       county: county || "All counties",
       dataPoints: priceHistory.length,
       periodDays: lookbackDays,

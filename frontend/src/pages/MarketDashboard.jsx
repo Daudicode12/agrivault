@@ -31,7 +31,7 @@ export default function MarketDashboard() {
     commodityAPI.list().then((res) => {
       const list = res.data.commodities || [];
       setCommodities(list);
-      if (list.length > 0) setSelectedCommodity(list[0].id);
+      if (list.length > 0) setSelectedCommodity(list[0].name);
     });
   }, []);
 
@@ -44,7 +44,7 @@ export default function MarketDashboard() {
     setLoading(true);
     setError('');
     try {
-      const params = { commodityId: selectedCommodity, days };
+      const params = { commodity: selectedCommodity, days };
       if (selectedCounty !== 'All Counties') params.county = selectedCounty;
       
       const res = await marketAPI.dashboard(params);
@@ -79,7 +79,7 @@ export default function MarketDashboard() {
           </label>
           <select value={selectedCommodity} onChange={(e) => setSelectedCommodity(e.target.value)}>
             {commodities.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.name}>{c.name}</option>
             ))}
           </select>
         </div>
