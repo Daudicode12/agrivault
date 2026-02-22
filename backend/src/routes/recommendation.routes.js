@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 // ── GET recommendation for a storage unit ──
-// TODO: Implement in Phase 3 (Day 14) — Combined Decision Intelligence Engine
+
 router.get("/:unitId", async (req, res, next) => {
   try {
     res.json({
