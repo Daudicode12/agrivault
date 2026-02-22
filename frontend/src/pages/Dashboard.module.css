@@ -118,6 +118,75 @@
   padding: 20px;
 }
 
+.infoCard {
+  padding: 3rem;
+  text-align: center;
+}
+
+.infoContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.infoIcon {
+  color: #10b981;
+  opacity: 0.7;
+}
+
+.infoContent h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.infoContent p {
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.infoBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #10b981;
+  color: white;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+  margin-top: 0.5rem;
+}
+
+.infoBtn:hover {
+  background: #059669;
+}
+
+.commodityDesc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0;
+}
+
+.storageInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.storageDetail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .error {
   color: var(--red-400);
   text-align: center;

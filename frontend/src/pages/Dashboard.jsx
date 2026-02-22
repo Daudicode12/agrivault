@@ -85,18 +85,42 @@ export default function Dashboard() {
         <BarChart3 size={20} /> Market Overview
       </h2>
 
-      {summaries.length === 0 && (
-        <Card>
-          <p className={styles.empty}>
-            No market data available yet. Run the market engine seeder to populate data.
-          </p>
+      {summaries.length === 0 && commodities.length > 0 && (
+        <Card className={styles.infoCard}>
+          <div className={styles.infoContent}>
+            <BarChart3 size={48} className={styles.infoIcon} />
+            <h3>Market Data Available</h3>
+            <p>View detailed market analysis and price trends for all commodities.</p>
+            <Link to="/market" className={styles.infoBtn}>
+              View Market Analysis <ArrowRight size={16} />
+            </Link>
+          </div>
+        </Card>
+      )}
+
+      {summaries.length === 0 && commodities.length === 0 && (
+        <Card className={styles.infoCard}>
+          <div className={styles.infoContent}>
+            <Wheat size={48} className={styles.infoIcon} />
+            <h3>No Commodities Yet</h3>
+            <p>Add commodities to start tracking market prices and trends.</p>
+            <Link to="/commodities" className={styles.infoBtn}>
+              Add Commodities <ArrowRight size={16} />
+            </Link>
+          </div>
         </Card>
       )}
 
       <div className={styles.grid}>
-        {summaries.map((item) => (
-          <CommodityCard key={item.commodityId || item.commodity_id} item={item} />
-        ))}
+        {summaries.length > 0 ? (
+          summaries.map((item) => (
+            <CommodityCard key={item.commodityId || item.commodity_id} item={item} />
+          ))
+        ) : (
+          commodities.map((commodity) => (
+            <CommodityCardSimple key={commodity.id} commodity={commodity} />
+          ))
+        )}
       </div>
     </div>
   );
@@ -149,6 +173,40 @@ function CommodityCard({ item }) {
 
         <span className={styles.viewMore}>
           View Details <ArrowRight size={14} />
+        </span>
+      </Card>
+    </Link>
+  );
+}
+
+function CommodityCardSimple({ commodity }) {
+  return (
+    <Link to={`/market/${commodity.id}`} className={styles.cardLink}>
+      <Card className={styles.commodityCard}>
+        <div className={styles.cardTop}>
+          <h3 className={styles.commodityName}>{commodity.name}</h3>
+          <Badge variant="info">{commodity.category || 'Commodity'}</Badge>
+        </div>
+
+        <p className={styles.commodityDesc}>
+          {commodity.unit || 'Track prices and trends'}
+        </p>
+
+        <div className={styles.storageInfo}>
+          {commodity.maxStorageDays && (
+            <span className={styles.storageDetail}>
+              Storage: {commodity.maxStorageDays} days
+            </span>
+          )}
+          {commodity.optimalTempMin && commodity.optimalTempMax && (
+            <span className={styles.storageDetail}>
+              Temp: {commodity.optimalTempMin}-{commodity.optimalTempMax}°C
+            </span>
+          )}
+        </div>
+
+        <span className={styles.viewMore}>
+          View Market Data <ArrowRight size={14} />
         </span>
       </Card>
     </Link>
