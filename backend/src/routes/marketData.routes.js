@@ -9,7 +9,7 @@ const router = Router();
 // ── GET market data with filters ──
 router.get("/", async (req, res, next) => {
   try {
-    const { commodityId, from, to, market, limit } = req.query;
+    const { commodityId, from, to, market, county, limit } = req.query;
 
     let query = supabase
       .from("agro_market_data")
@@ -19,6 +19,7 @@ router.get("/", async (req, res, next) => {
 
     if (commodityId) query = query.eq("commodityId", commodityId);
     if (market) query = query.eq("market", market);
+    if (county) query = query.ilike("county", `%${county}%`);
     if (from) query = query.gte("recordedAt", new Date(from).toISOString());
     if (to) query = query.lte("recordedAt", new Date(to).toISOString());
 
@@ -39,6 +40,7 @@ router.post(
     body("price").isNumeric().withMessage("Price is required"),
     body("commodityId").isUUID().withMessage("Valid commodity ID is required"),
     body("market").optional().trim(),
+    body("county").optional().trim(),
     body("currency").optional().trim(),
     body("recordedAt").optional().isISO8601(),
   ],
@@ -49,13 +51,14 @@ router.post(
         throw new AppError(errors.array()[0].msg, 400);
       }
 
-      const { price, commodityId, market, currency, recordedAt } = req.body;
+      const { price, commodityId, market, county, currency, recordedAt } = req.body;
       const { data: entry, error } = await supabase
         .from("agro_market_data")
         .insert({
           price,
           commodityId,
           market,
+          county,
           currency: currency || "KES",
           source: "manual",
           recordedAt: recordedAt ? new Date(recordedAt).toISOString() : new Date().toISOString(),

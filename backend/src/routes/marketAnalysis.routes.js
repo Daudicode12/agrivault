@@ -30,6 +30,148 @@ const { forecastPrices, analyzeSeasonalTiming, getSeasonalFactors } = require(an
 
 const router = Router();
 
+// ── GET /dashboard — Farmer's personalized market dashboard ──
+// Authenticated: shows market data filtered by county and commodity with recommendations
+router.get("/dashboard", authenticate, async (req, res, next) => {
+  try {
+    const { commodityId, county, days = 90 } = req.query;
+
+    if (!commodityId) {
+      throw new AppError("commodityId query parameter is required", 400);
+    }
+
+    // Verify commodity exists
+    const { supabase } = require("../config/supabase");
+    const { data: commodity, error: commErr } = await supabase
+      .from("agro_commodities")
+      .select("id, name, category, unit, maxStorageDays")
+      .eq("id", commodityId)
+      .maybeSingle();
+
+    if (commErr || !commodity) {
+      throw new AppError("Commodity not found", 404);
+    }
+
+    // Fetch price history with optional county filter
+    const lookbackDays = Math.min(parseInt(days, 10), 365);
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - lookbackDays);
+
+    let priceQuery = supabase
+      .from("agro_market_data")
+      .select("price, recordedAt, market, source, currency")
+      .eq("commodityId", commodityId)
+      .gte("recordedAt", fromDate.toISOString())
+      .order("recordedAt", { ascending: true });
+
+    if (county) {
+      priceQuery = priceQuery.ilike("market", `%${county}%`);
+    }
+
+    const { data: priceHistory, error: priceErr } = await priceQuery;
+    if (priceErr) throw new AppError(priceErr.message, 500);
+
+    if (!priceHistory || priceHistory.length < 5) {
+      return res.json({
+        status: "insufficient_data",
+        message: `Insufficient market data for ${commodity.name}${county ? ` in ${county}` : ""}. Only ${priceHistory?.length || 0} records found.`,
+        commodity,
+        county: county || "All counties",
+        priceHistory: priceHistory || [],
+        dataPoints: priceHistory?.length || 0,
+      });
+    }
+
+    // Run full analysis
+    const { analyzeTrend, forecastPrices, analyzeSeasonalTiming, getSeasonalFactors, generateRecommendation } = require(analysisPath);
+    
+    const trend = analyzeTrend(priceHistory);
+    const seasonalFactors = getSeasonalFactors(commodity.name, priceHistory);
+    const forecast = priceHistory.length >= 14 ? forecastPrices(priceHistory, 30, seasonalFactors.factors) : null;
+    const seasonal = analyzeSeasonalTiming(commodity.name, priceHistory);
+    
+    // Generate recommendation (without storage context for general market view)
+    const recommendation = generateRecommendation({
+      prices: priceHistory,
+      commodityName: commodity.name,
+      storageInfo: null,
+    });
+
+    // Get latest price
+    const latestPrice = priceHistory[priceHistory.length - 1];
+
+    // Calculate price statistics
+    const prices = priceHistory.map(p => p.price);
+    const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
+    res.json({
+      status: "ok",
+      commodity,
+      county: county || "All counties",
+      dataPoints: priceHistory.length,
+      periodDays: lookbackDays,
+      
+      // Price summary
+      priceSummary: {
+        current: latestPrice.price,
+        currentDate: latestPrice.recordedAt,
+        currentMarket: latestPrice.market,
+        average: parseFloat(avgPrice.toFixed(2)),
+        minimum: minPrice,
+        maximum: maxPrice,
+        currency: latestPrice.currency || "KES",
+      },
+
+      // Full price history for charts
+      priceHistory: priceHistory.map(p => ({
+        date: p.recordedAt,
+        price: p.price,
+        market: p.market,
+        source: p.source,
+      })),
+
+      // Market analysis
+      analysis: {
+        trend: trend.error ? null : {
+          direction: trend.trend,
+          movingAverages: trend.movingAverages,
+          momentum: trend.momentum,
+          volatility: trend.volatility,
+          priceRange: trend.priceRange,
+        },
+        forecast: forecast?.error ? null : {
+          direction: forecast.forecast?.direction,
+          priceChangePct: forecast.forecast?.priceChangePct,
+          horizonDays: forecast.forecast?.horizonDays,
+          reliability: forecast.confidence?.reliability,
+          predictions: forecast.forecast?.predictions?.slice(0, 30),
+        },
+        seasonal,
+      },
+
+      // Sell/Hold recommendation
+      recommendation: {
+        action: recommendation.recommendation,
+        urgency: recommendation.urgency,
+        confidence: recommendation.confidence,
+        summary: recommendation.summary,
+        compositeScore: recommendation.compositeScore,
+        reasoning: {
+          trend: recommendation.scores.trend.reasons,
+          forecast: recommendation.scores.forecast.reasons,
+          seasonal: recommendation.scores.seasonal.reasons,
+        },
+      },
+
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // ── GET /overview — Market overview (all commodities) ──
 // Public: farmers can see market overview without auth
 router.get("/overview", async (_req, res, next) => {

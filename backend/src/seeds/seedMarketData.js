@@ -33,7 +33,15 @@ const SEASONAL = {
   "Coffee (dried)": [1.0, 0.98, 0.97, 0.99, 1.01, 1.02, 1.03, 1.02, 1.0, 0.99, 0.98, 1.0],
 };
 
-const MARKETS = ["Nairobi", "Mombasa", "Kisumu", "Nakuru", "Eldoret"];
+const MARKETS = [
+  { name: "Nairobi", county: "Nairobi" },
+  { name: "Mombasa", county: "Mombasa" },
+  { name: "Kisumu", county: "Kisumu" },
+  { name: "Nakuru", county: "Nakuru" },
+  { name: "Eldoret", county: "Uasin Gishu" },
+  { name: "Kiambu", county: "Kiambu" },
+  { name: "Machakos", county: "Machakos" },
+];
 
 function gaussianRandom() {
   let u = 0, v = 0;
@@ -69,11 +77,12 @@ function generatePriceHistory(commodityName, days = 180) {
 
     // Not every day has a data point (simulate market days ~5/week)
     if (Math.random() < 0.7) {
-      const market = MARKETS[Math.floor(Math.random() * MARKETS.length)];
+      const marketInfo = MARKETS[Math.floor(Math.random() * MARKETS.length)];
       entries.push({
         price,
         currency: "KES",
-        market,
+        market: marketInfo.name,
+        county: marketInfo.county,
         source: "seed",
         recordedAt: date.toISOString(),
       });
