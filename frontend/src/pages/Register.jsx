@@ -18,7 +18,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await register({ name: form.name, email: form.email, password: form.password });
+      await register({ fullName: form.name, email: form.email, password: form.password });
       toast.success('Account created successfully!');
       navigate('/');
     } catch (err) {

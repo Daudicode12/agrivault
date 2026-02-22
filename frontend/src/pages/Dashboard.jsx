@@ -10,16 +10,29 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { marketAPI, commodityAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Loader from '../components/ui/Loader';
 import styles from './Dashboard.module.css';
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [overview, setOverview] = useState(null);
   const [commodities, setCommodities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const greeting = getGreeting();
+  const userName = user?.fullName?.split(' ')[0] || 'Farmer';
 
   useEffect(() => {
     Promise.all([
@@ -48,6 +61,16 @@ export default function Dashboard() {
 
   return (
     <div className={`${styles.page} fade-in`}>
+      {/* Greeting */}
+      {user && (
+        <div className={styles.greeting}>
+          <h1 className={styles.greetingText}>
+            {greeting}, {userName}! 👋
+          </h1>
+          <p className={styles.greetingSubtext}>Welcome back to your farm dashboard</p>
+        </div>
+      )}
+
       {/* Hero stats */}
       <div className={styles.stats}>
         <Card className={styles.stat}>
