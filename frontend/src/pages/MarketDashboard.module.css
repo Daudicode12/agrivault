@@ -252,6 +252,27 @@
   margin: 0.5rem 0;
 }
 
+.dataSourceBanner {
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  background: linear-gradient(to right, rgba(59, 130, 246, 0.05), transparent);
+  border-left: 4px solid #3b82f6;
+}
+
+.bannerContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  color: #1f2937;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.bannerIcon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .page {

@@ -120,6 +120,16 @@ export default function MarketDashboard() {
 
       {dashboard?.status === 'ok' && (
         <>
+          {/* Data Source Indicator */}
+          <Card className={styles.dataSourceBanner}>
+            <div className={styles.bannerContent}>
+              <span className={styles.bannerIcon}>ℹ️</span>
+              <div>
+                <strong>Price Data Source:</strong> Currently showing simulated prices based on market trends. 
+                For actual prices, verify at your local market or submit real prices you observe.
+              </div>
+            </div>
+          </Card>
           {/* Price Summary */}
           <div className={styles.grid}>
             <Card className={styles.statCard}>

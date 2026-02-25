@@ -56,7 +56,7 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/market-analysis", marketAnalysisRoutes);
 app.use("/api/scrapers", scraperRoutes);
 
-// ── Error Handler (must be last) ──
+// ── Error Handler that handles all the errors that may arise ──
 app.use(errorHandler);
 
 // ── Start Server ──
