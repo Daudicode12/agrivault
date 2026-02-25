@@ -8,6 +8,7 @@
     "start": "nodemon src/server.js",
     "seed": "node src/seeds/seed.js",
     "seed:market": "node src/seeds/seedMarketData.js",
+    "seed:commodity": "node src/seeds/generateCommodityPrices.js",
     "update:prices": "node src/seeds/updateDailyPrices.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",

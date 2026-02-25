@@ -8,15 +8,21 @@ const titles = {
   '/market': 'Market Analysis',
   '/storage': 'Storage Units',
   '/alerts': 'Alerts',
+  '/commodities': 'Commodities',
+  '/market-dashboard': 'Market Dashboard',
 };
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
 
-  const title =
-    titles[pathname] ||
-    (pathname.startsWith('/market/') ? 'Commodity Detail' : 'AgroVault');
+  const getTitle = () => {
+    if (titles[pathname]) return titles[pathname];
+    if (pathname.startsWith('/market/')) {
+      return document.title.replace(' - AgroVault', '') || 'Commodity Analysis';
+    }
+    return 'AgroVault';
+  };
 
   return (
     <header className={styles.header}>
@@ -24,7 +30,7 @@ export default function Header({ onMenuClick }) {
         <button className={styles.menuBtn} onClick={onMenuClick}>
           <Menu size={24} />
         </button>
-        <h1 className={styles.title}>{title}</h1>
+        <h1 className={styles.title}>{getTitle()}</h1>
       </div>
       <div className={styles.right}>
         {user && (

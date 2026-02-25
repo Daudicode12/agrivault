@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, TrendingDown, Minus, Search, ArrowRight, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Search, ArrowRight, Package, MapPin } from 'lucide-react';
 import { marketAPI, commodityAPI } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Loader from '../components/ui/Loader';
 import styles from './MarketAnalysis.module.css';
 
+const COUNTIES = [
+  'All Counties',
+  'Nairobi',
+  'Kiambu',
+  'Nakuru',
+  'Mombasa',
+  'Kisumu',
+  'Uasin Gishu',
+  'Machakos',
+];
+
 export default function MarketAnalysis() {
   const [marketData, setMarketData] = useState(null);
   const [commodities, setCommodities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedCounty, setSelectedCounty] = useState('All Counties');
 
   useEffect(() => {
     Promise.all([
@@ -38,7 +50,7 @@ export default function MarketAnalysis() {
 
   return (
     <div className={`${styles.page} fade-in`}>
-      {/* Search bar */}
+      {/* Search and filter bar */}
       <div className={styles.toolbar}>
         <div className={styles.searchBox}>
           <Search size={18} className={styles.searchIcon} />
@@ -49,8 +61,29 @@ export default function MarketAnalysis() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <div className={styles.filterBox}>
+          <MapPin size={18} className={styles.filterIcon} />
+          <select
+            className={styles.filterSelect}
+            value={selectedCounty}
+            onChange={(e) => setSelectedCounty(e.target.value)}
+          >
+            {COUNTIES.map((county) => (
+              <option key={county} value={county}>
+                {county}
+              </option>
+            ))}
+          </select>
+        </div>
         <span className={styles.count}>{filtered.length} commodities</span>
       </div>
+
+      {selectedCounty !== 'All Counties' && (
+        <div className={styles.locationBanner}>
+          <MapPin size={16} />
+          <span>Showing market data for <strong>{selectedCounty}</strong> county</span>
+        </div>
+      )}
 
       {/* Table-like list */}
       <Card className={styles.tableCard}>
@@ -94,7 +127,7 @@ export default function MarketAnalysis() {
             direction === 'down' ? TrendingDown : Minus;
 
           return (
-            <Link key={id} to={`/market/${id}`} className={styles.row}>
+            <Link key={id} to={`/market/${id}?county=${selectedCounty !== 'All Counties' ? selectedCounty : ''}`} className={styles.row}>
               <span className={styles.colName}>
                 <strong>{name}</strong>
               </span>

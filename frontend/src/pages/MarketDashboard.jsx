@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, MapPin, Package, Calendar } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { TrendingUp, TrendingDown, MapPin, Package, Calendar, Target, Activity } from 'lucide-react';
 import { commodityAPI, marketAPI } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -147,34 +147,65 @@ export default function MarketDashboard() {
             </Card>
 
             <Card className={styles.statCard}>
-              <div className={styles.statLabel}>Data Points</div>
-              <div className={styles.statValue}>{dashboard.dataPoints}</div>
-              <div className={styles.statMeta}>{dashboard.county}</div>
+              <div className={styles.statLabel}>Volatility</div>
+              <div className={styles.statValue}>
+                {dashboard.analysis?.trend?.volatility?.dailyVolatility 
+                  ? `${dashboard.analysis.trend.volatility.dailyVolatility.toFixed(2)}%`
+                  : 'N/A'}
+              </div>
+              <div className={styles.statMeta}>Daily</div>
+            </Card>
+
+            <Card className={styles.statCard}>
+              <div className={styles.statLabel}>
+                <Target size={16} /> Support Level
+              </div>
+              <div className={styles.statValue}>
+                {dashboard.analysis?.trend?.priceRange?.low 
+                  ? `KES ${dashboard.analysis.trend.priceRange.low.toLocaleString()}`
+                  : 'N/A'}
+              </div>
+              <div className={styles.statMeta}>Floor price</div>
+            </Card>
+
+            <Card className={styles.statCard}>
+              <div className={styles.statLabel}>
+                <Target size={16} /> Resistance Level
+              </div>
+              <div className={styles.statValue}>
+                {dashboard.analysis?.trend?.priceRange?.high 
+                  ? `KES ${dashboard.analysis.trend.priceRange.high.toLocaleString()}`
+                  : 'N/A'}
+              </div>
+              <div className={styles.statMeta}>Ceiling price</div>
             </Card>
           </div>
 
           {/* Recommendation */}
-          <Card className={`${styles.recommendation} ${styles[recColor]}`}>
-            <div className={styles.recHeader}>
-              <h2>{rec.action.replace(/_/g, ' ')}</h2>
-              <Badge variant={rec.urgency}>{rec.urgency} urgency</Badge>
-            </div>
-            <p className={styles.recSummary}>{rec.summary}</p>
-            <div className={styles.recMeta}>
-              <span>Confidence: {rec.confidence}</span>
-              <span>Score: {rec.compositeScore}</span>
-            </div>
-          </Card>
+          {rec && (
+            <Card className={`${styles.recommendation} ${styles[recColor]}`}>
+              <div className={styles.recHeader}>
+                <h2>{rec.action?.replace(/_/g, ' ') || 'HOLD'}</h2>
+                <Badge variant={rec.urgency || 'low'}>{rec.urgency || 'low'} urgency</Badge>
+              </div>
+              <p className={styles.recSummary}>{rec.summary || 'Analyzing market conditions...'}</p>
+              <div className={styles.recMeta}>
+                <span>Confidence: {rec.confidence || 'N/A'}</span>
+                <span>Score: {rec.compositeScore?.toFixed(2) || 'N/A'}</span>
+              </div>
+            </Card>
+          )}
 
           {/* Price Chart */}
           <Card className={styles.chartCard}>
             <h3>Price Trend - {dashboard.commodity.name}</h3>
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="date" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
                 <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
                   formatter={(value) => [`KES ${value.toLocaleString()}`, 'Price']}
                   labelFormatter={(label) => `Date: ${label}`}
                 />
@@ -182,12 +213,45 @@ export default function MarketDashboard() {
                 <Line 
                   type="monotone" 
                   dataKey="price" 
-                  stroke="#10b981" 
+                  stroke="#22c55e" 
                   strokeWidth={2}
-                  dot={{ r: 3 }}
+                  dot={{ r: 2, fill: '#22c55e' }}
                   activeDot={{ r: 5 }}
+                  name="Price (KES)"
                 />
               </LineChart>
+            </ResponsiveContainer>
+          </Card>
+
+          {/* Seasonal Bar Chart */}
+          <Card className={styles.chartCard}>
+            <h3>Seasonal Price Patterns</h3>
+            <p className={styles.chartSub}>Monthly price factors - values above 1.0 indicate higher prices</p>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={[
+                { month: 'Jan', factor: dashboard.analysis.seasonal.allFactors?.January || 1 },
+                { month: 'Feb', factor: dashboard.analysis.seasonal.allFactors?.February || 1 },
+                { month: 'Mar', factor: dashboard.analysis.seasonal.allFactors?.March || 1 },
+                { month: 'Apr', factor: dashboard.analysis.seasonal.allFactors?.April || 1 },
+                { month: 'May', factor: dashboard.analysis.seasonal.allFactors?.May || 1 },
+                { month: 'Jun', factor: dashboard.analysis.seasonal.allFactors?.June || 1 },
+                { month: 'Jul', factor: dashboard.analysis.seasonal.allFactors?.July || 1 },
+                { month: 'Aug', factor: dashboard.analysis.seasonal.allFactors?.August || 1 },
+                { month: 'Sep', factor: dashboard.analysis.seasonal.allFactors?.September || 1 },
+                { month: 'Oct', factor: dashboard.analysis.seasonal.allFactors?.October || 1 },
+                { month: 'Nov', factor: dashboard.analysis.seasonal.allFactors?.November || 1 },
+                { month: 'Dec', factor: dashboard.analysis.seasonal.allFactors?.December || 1 },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <YAxis domain={[0.8, 1.3]} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                  formatter={(value) => [value.toFixed(2), 'Factor']}
+                />
+                <ReferenceLine y={1} stroke="#64748b" strokeDasharray="3 3" />
+                <Bar dataKey="factor" fill="#22c55e" radius={[4, 4, 0, 0]} name="Seasonal Factor" />
+              </BarChart>
             </ResponsiveContainer>
           </Card>
 
@@ -208,15 +272,27 @@ export default function MarketDashboard() {
                 </div>
                 <div className={styles.analysisItem}>
                   <span>7-day momentum:</span>
-                  <strong>{dashboard.analysis.trend.momentum['7day']?.toFixed(2)}%</strong>
+                  <strong>
+                    {dashboard.analysis?.trend?.momentum?.['7day'] != null
+                      ? `${dashboard.analysis.trend.momentum['7day'].toFixed(2)}%`
+                      : 'N/A'}
+                  </strong>
                 </div>
                 <div className={styles.analysisItem}>
                   <span>14-day momentum:</span>
-                  <strong>{dashboard.analysis.trend.momentum['14day']?.toFixed(2)}%</strong>
+                  <strong>
+                    {dashboard.analysis?.trend?.momentum?.['14day'] != null
+                      ? `${dashboard.analysis.trend.momentum['14day'].toFixed(2)}%`
+                      : 'N/A'}
+                  </strong>
                 </div>
                 <div className={styles.analysisItem}>
                   <span>Volatility:</span>
-                  <strong>{dashboard.analysis.trend.volatility.dailyVolatility?.toFixed(2)}%</strong>
+                  <strong>
+                    {dashboard.analysis?.trend?.volatility?.dailyVolatility != null
+                      ? `${dashboard.analysis.trend.volatility.dailyVolatility.toFixed(2)}%`
+                      : 'N/A'}
+                  </strong>
                 </div>
               </div>
             </Card>

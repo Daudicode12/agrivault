@@ -9,6 +9,7 @@ import {
   Target,
   ShieldCheck,
   Activity,
+  MapPin,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -44,6 +45,9 @@ export default function CommodityDetail() {
   const [forecast, setForecast] = useState(null);
   const [seasonal, setSeasonal] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  const searchParams = new URLSearchParams(window.location.search);
+  const county = searchParams.get('county');
 
   useEffect(() => {
     Promise.all([
@@ -53,13 +57,23 @@ export default function CommodityDetail() {
       marketAPI.seasonal(commodityId).catch(() => null),
     ])
       .then(([aRes, cRes, fRes, sRes]) => {
-        if (aRes?.data) setAnalysis(aRes.data);
+        if (aRes?.data) {
+          setAnalysis(aRes.data);
+          const commodityName = aRes.data.commodityName || aRes.data.commodity_name || 'Commodity';
+          document.title = `${commodityName} Analysis - AgroVault`;
+        }
         if (cRes?.data) setChart(cRes.data);
         if (fRes?.data) setForecast(fRes.data);
         if (sRes?.data) setSeasonal(sRes.data);
       })
       .finally(() => setLoading(false));
   }, [commodityId]);
+
+  useEffect(() => {
+    return () => {
+      document.title = 'AgroVault';
+    };
+  }, []);
 
   if (loading) return <Loader text="Analyzing commodity..." />;
   if (!analysis) {
@@ -108,6 +122,11 @@ export default function CommodityDetail() {
       {/* Hero */}
       <div className={styles.hero}>
         <div className={styles.heroLeft}>
+          {county && (
+            <div className={styles.locationTag}>
+              <MapPin size={14} /> {county}
+            </div>
+          )}
           <h2 className={styles.commodityName}>
             {analysis.commodityName || analysis.commodity_name || 'Commodity'}
           </h2>
