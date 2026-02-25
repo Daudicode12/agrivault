@@ -53,6 +53,8 @@ export const commodityAPI = {
 /* ── Market Data ──────────────────────── */
 export const marketDataAPI = {
   latest: (params) => api.get('/market-data/latest', { params }),
+  byCounty: (params) => api.get('/market-data/by-county', { params }),
+  list: (params) => api.get('/market-data', { params }),
   history: (commodityId, params) =>
     api.get(`/market-data/history/${commodityId}`, { params }),
 };
@@ -63,6 +65,12 @@ export const storageAPI = {
   get: (id) => api.get(`/storage-units/${id}`),
   create: (data) => api.post('/storage-units', data),
   update: (id, data) => api.put(`/storage-units/${id}`, data),
+};
+
+/* ── Weather ──────────────────────────── */
+export const weatherAPI = {
+  forLocation: (location) => api.get('/weather/location', { params: { q: location } }),
+  forStorage: (unitId) => api.get(`/weather/storage/${unitId}`),
 };
 
 /* ── Sensors (auth required) ──────────── */

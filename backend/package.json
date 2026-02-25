@@ -7,10 +7,9 @@
     "dev": "nodemon src/server.js",
     "start": "nodemon src/server.js",
     "seed": "node src/seeds/seed.js",
-    "seed:market": "node src/seeds/seedMarketData.js",
-    "seed:commodity": "node src/seeds/generateCommodityPrices.js",
-    "update:prices": "node src/seeds/updateDailyPrices.js",
     "import:knbs": "node src/utils/importKNBSData.js",
+    "scrape:knbs": "node ../market-engine/scrapers/run.js --source=knbs",
+    "cleanup:dummy": "node -e \"require('./src/services/knbsPrice.service').cleanupDummyData()\"",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .js"

@@ -22,7 +22,7 @@ const {
   getPriceChartData,
   fetchPriceHistory,
 } = require("../services/marketAnalysis.service");
-const { ensureMarketData } = require("../utils/autoGenerateMarketData");
+const { ensureRealMarketData, getPricesByCounty } = require("../services/knbsPrice.service");
 
 // Import analysis functions for individual endpoints
 const path = require("path");
@@ -55,8 +55,8 @@ router.get("/dashboard", authenticate, async (req, res, next) => {
 
     const commodityId = commodityData.id;
 
-    // Auto-generate market data if missing
-    await ensureMarketData(commodityId);
+    // Fetch real market data from KNBS if missing
+    await ensureRealMarketData(commodityId);
 
     // Fetch price history with optional county filter
     const lookbackDays = Math.min(parseInt(days, 10), 365);
@@ -198,8 +198,8 @@ router.get("/:commodityId", async (req, res, next) => {
   try {
     const { commodityId } = req.params;
     
-    // Auto-generate market data if missing
-    await ensureMarketData(commodityId);
+    // Fetch real market data from KNBS if missing
+    await ensureRealMarketData(commodityId);
     
     const result = await getMarketAnalysis(commodityId);
 
@@ -227,8 +227,8 @@ router.get("/:commodityId/chart", async (req, res, next) => {
     const { commodityId } = req.params;
     const days = Math.min(parseInt(req.query.days || "90", 10), 365);
 
-    // Auto-generate market data if missing
-    await ensureMarketData(commodityId);
+    // Fetch real market data from KNBS if missing
+    await ensureRealMarketData(commodityId);
 
     const chartData = await getPriceChartData(commodityId, days);
 
@@ -251,8 +251,8 @@ router.get("/:commodityId/forecast", async (req, res, next) => {
     const { commodityId } = req.params;
     const horizonDays = Math.min(parseInt(req.query.days || "30", 10), 90);
 
-    // Auto-generate market data if missing
-    await ensureMarketData(commodityId);
+    // Fetch real market data from KNBS if missing
+    await ensureRealMarketData(commodityId);
 
     const prices = await fetchPriceHistory(commodityId);
 

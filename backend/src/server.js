@@ -16,6 +16,7 @@ const alertRoutes = require("./routes/alert.routes");
 const recommendationRoutes = require("./routes/recommendation.routes");
 const marketAnalysisRoutes = require("./routes/marketAnalysis.routes");
 const scraperRoutes = require("./routes/scraper.routes");
+const weatherRoutes = require("./routes/weather.routes");
 
 // Middleware imports
 const { errorHandler } = require("./middleware/errorHandler");
@@ -55,6 +56,7 @@ app.use("/api/alerts", alertRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/market-analysis", marketAnalysisRoutes);
 app.use("/api/scrapers", scraperRoutes);
+app.use("/api/weather", weatherRoutes);
 
 // ── Error Handler that handles all the errors that may arise ──
 app.use(errorHandler);

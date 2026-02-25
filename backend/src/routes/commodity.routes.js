@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 const { supabase } = require("../config/supabase");
 const { AppError } = require("../middleware/errorHandler");
 const { authenticate } = require("../middleware/auth");
+const { fetchKNBSPricesForCommodity } = require("../services/knbsPrice.service");
 
 const router = Router();
 
@@ -74,6 +75,11 @@ router.post(
         .select("*")
         .single();
       if (error) throw new AppError(error.message, 500);
+
+      // Fetch KNBS prices in the background for the new commodity
+      fetchKNBSPricesForCommodity(commodity.name).catch((err) =>
+        console.warn(`Background KNBS fetch failed for ${commodity.name}:`, err.message)
+      );
 
       res.status(201).json({ message: "Commodity created", commodity });
     } catch (error) {

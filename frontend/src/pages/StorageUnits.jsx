@@ -7,8 +7,16 @@ import {
   Edit2,
   ShieldCheck,
   RefreshCw,
+  Cloud,
+  Wind,
+  AlertTriangle,
+  Sun,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  MapPin,
 } from 'lucide-react';
-import { storageAPI, recommendationAPI, sensorAPI, commodityAPI } from '../services/api';
+import { storageAPI, recommendationAPI, sensorAPI, commodityAPI, weatherAPI } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Loader from '../components/ui/Loader';
@@ -187,7 +195,10 @@ export default function StorageUnits() {
 function StorageCard({ unit, onEdit }) {
   const [rec, setRec] = useState(null);
   const [sensor, setSensor] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [storageRisk, setStorageRisk] = useState(null);
   const [loadingRec, setLoadingRec] = useState(false);
+  const [loadingWeather, setLoadingWeather] = useState(false);
 
   const fetchRec = () => {
     setLoadingRec(true);
@@ -198,14 +209,45 @@ function StorageCard({ unit, onEdit }) {
       .finally(() => setLoadingRec(false));
   };
 
+  const fetchWeather = () => {
+    if (!unit.location) return;
+    setLoadingWeather(true);
+    weatherAPI
+      .forStorage(unit.id)
+      .then((res) => {
+        setWeather(res.data.weather);
+        setStorageRisk(res.data.storageRisk);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingWeather(false));
+  };
+
   useEffect(() => {
-    // try to fetch latest sensor data
     sensorAPI.latest(unit.id).then((res) => setSensor(res.data)).catch(() => {});
+    // Auto-fetch weather if location is set
+    if (unit.location) fetchWeather();
   }, [unit.id]);
 
   const recAction = rec?.recommendation?.action || rec?.action;
   const recSummary = rec?.recommendation?.summary || rec?.summary;
   const recVariant = (recAction || '').toLowerCase().replace(/ /g, '_');
+
+  const getWeatherIcon = (condition) => {
+    if (!condition) return <Cloud size={14} />;
+    const c = condition.toLowerCase();
+    if (c.includes('clear') || c.includes('sunny')) return <Sun size={14} />;
+    if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) return <CloudRain size={14} />;
+    if (c.includes('snow')) return <CloudSnow size={14} />;
+    if (c.includes('thunder')) return <CloudLightning size={14} />;
+    return <Cloud size={14} />;
+  };
+
+  const getRiskBadgeVariant = (risk) => {
+    if (risk === 'critical') return 'danger';
+    if (risk === 'warning') return 'warning';
+    if (risk === 'info') return 'info';
+    return 'success';
+  };
 
   return (
     <Card className={styles.unitCard}>
@@ -214,7 +256,9 @@ function StorageCard({ unit, onEdit }) {
           <Warehouse size={20} className={styles.unitIcon} />
           <div>
             <h3 className={styles.unitName}>{unit.name}</h3>
-            <span className={styles.unitLocation}>{unit.location || 'No location'}</span>
+            <span className={styles.unitLocation}>
+              <MapPin size={12} /> {unit.location || 'No location set'}
+            </span>
           </div>
         </div>
         <button
@@ -226,16 +270,101 @@ function StorageCard({ unit, onEdit }) {
         </button>
       </div>
 
+      {/* Weather Section */}
+      {weather?.current && (
+        <div className={styles.weatherSection}>
+          <div className={styles.weatherHeader}>
+            {getWeatherIcon(weather.current.condition)}
+            <span className={styles.weatherCondition}>{weather.current.condition}</span>
+          </div>
+          <div className={styles.weatherGrid}>
+            <div className={styles.weatherItem}>
+              <Thermometer size={13} />
+              <span>{weather.current.temperature?.toFixed(1)}°C</span>
+            </div>
+            <div className={styles.weatherItem}>
+              <Droplets size={13} />
+              <span>{weather.current.humidity}%</span>
+            </div>
+            <div className={styles.weatherItem}>
+              <Wind size={13} />
+              <span>{weather.current.windSpeed?.toFixed(1)} km/h</span>
+            </div>
+            {weather.current.precipitation > 0 && (
+              <div className={styles.weatherItem}>
+                <CloudRain size={13} />
+                <span>{weather.current.precipitation}mm</span>
+              </div>
+            )}
+          </div>
+
+          {/* Storage Risk Assessment */}
+          {storageRisk && (
+            <div className={styles.riskSection}>
+              <Badge variant={getRiskBadgeVariant(storageRisk.overallRisk)}>
+                {storageRisk.overallRisk === 'good' ? '✓ Good conditions' : 
+                 storageRisk.overallRisk === 'critical' ? '⚠ Critical risk' :
+                 storageRisk.overallRisk === 'warning' ? '⚡ Warning' : 'ℹ Info'}
+              </Badge>
+              {storageRisk.risks.length > 0 && (
+                <ul className={styles.riskList}>
+                  {storageRisk.risks.slice(0, 3).map((r, i) => (
+                    <li key={i} className={styles[`risk_${r.severity}`]}>
+                      <AlertTriangle size={12} /> {r.message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* 3-day Forecast */}
+          {weather.forecast && weather.forecast.length > 0 && (
+            <div className={styles.forecastRow}>
+              {weather.forecast.slice(0, 3).map((day, i) => (
+                <div key={i} className={styles.forecastDay}>
+                  <span className={styles.forecastDate}>
+                    {new Date(day.date).toLocaleDateString('en-KE', { weekday: 'short' })}
+                  </span>
+                  {getWeatherIcon(day.condition)}
+                  <span className={styles.forecastTemp}>
+                    {day.tempMax?.toFixed(0)}° / {day.tempMin?.toFixed(0)}°
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!weather && unit.location && loadingWeather && (
+        <div className={styles.weatherLoading}>
+          <RefreshCw size={14} className={styles.spin} /> Loading weather...
+        </div>
+      )}
+
+      {!weather && unit.location && !loadingWeather && (
+        <button className={styles.weatherBtn} onClick={fetchWeather}>
+          <Cloud size={14} /> Load Weather
+        </button>
+      )}
+
+      {!unit.location && (
+        <div className={styles.noLocation}>
+          <MapPin size={14} /> Set a location to see weather conditions
+        </div>
+      )}
+
       {/* Sensor readings */}
       {sensor && (
         <div className={styles.sensorRow}>
           <div className={styles.sensorItem}>
             <Thermometer size={14} />
-            <span>{sensor.temperature ?? '—'}°C</span>
+            <span>Sensor: {sensor.temperature ?? '—'}°C</span>
           </div>
           <div className={styles.sensorItem}>
             <Droplets size={14} />
-            <span>{sensor.humidity ?? '—'}%</span>
+            <span>Sensor: {sensor.humidity ?? '—'}%</span>
           </div>
         </div>
       )}
@@ -246,7 +375,6 @@ function StorageCard({ unit, onEdit }) {
         {unit.currentStockKg && <span>Stock: {unit.currentStockKg} kg</span>}
       </div>
 
-      {/* Recommendation */}
       {rec && recAction && (
         <div className={styles.recBox}>
           <Badge variant={recVariant}>{recAction.replace(/_/g, ' ')}</Badge>

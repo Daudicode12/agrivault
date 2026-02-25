@@ -123,10 +123,11 @@ export default function MarketDashboard() {
           {/* Data Source Indicator */}
           <Card className={styles.dataSourceBanner}>
             <div className={styles.bannerContent}>
-              <span className={styles.bannerIcon}>ℹ️</span>
+              <span className={styles.bannerIcon}>📊</span>
               <div>
-                <strong>Price Data Source:</strong> Currently showing simulated prices based on market trends. 
-                For actual prices, verify at your local market or submit real prices you observe.
+                <strong>Price Data Source:</strong> Showing prices sourced from KNBS (Kenya National Bureau of Statistics) 
+                and verified market data. {dashboard.dataPoints} data points 
+                {dashboard.county !== 'All counties' ? ` for ${dashboard.county}` : ''}.
               </div>
             </div>
           </Card>
