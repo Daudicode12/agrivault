@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Menu } from 'lucide-react';
 import styles from './Header.module.css';
 
 const titles = {
@@ -10,7 +10,7 @@ const titles = {
   '/alerts': 'Alerts',
 };
 
-export default function Header() {
+export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
   const { pathname } = useLocation();
 
@@ -20,7 +20,12 @@ export default function Header() {
 
   return (
     <header className={styles.header}>
-      <h1 className={styles.title}>{title}</h1>
+      <div className={styles.left}>
+        <button className={styles.menuBtn} onClick={onMenuClick}>
+          <Menu size={24} />
+        </button>
+        <h1 className={styles.title}>{title}</h1>
+      </div>
       <div className={styles.right}>
         {user && (
           <>

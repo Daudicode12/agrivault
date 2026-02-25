@@ -1,6 +1,7 @@
 .shell {
   display: flex;
   min-height: 100vh;
+  position: relative;
 }
 
 .main {
@@ -18,11 +19,22 @@
   width: 100%;
 }
 
+.overlay {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .main {
     margin-left: 0;
   }
   .content {
     padding: 20px 16px;
+  }
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
   }
 }

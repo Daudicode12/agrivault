@@ -10,6 +10,28 @@
   z-index: 40;
 }
 
+.left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menuBtn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+
+.menuBtn:hover {
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+
 .title {
   font-size: 1.3rem;
   font-weight: 700;
@@ -51,4 +73,6 @@
 @media (max-width: 768px) {
   .header { padding: 14px 16px; }
   .title { font-size: 1.1rem; }
+  .menuBtn { display: block; }
+  .user span { display: none; }
 }

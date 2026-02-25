@@ -8,6 +8,7 @@ import {
   Bell,
   LogIn,
   Sprout,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import styles from './Sidebar.module.css';
@@ -24,15 +25,20 @@ const authLinks = [
   { to: '/alerts', icon: Bell, label: 'Alerts' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { token } = useAuth();
   const location = useLocation();
 
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
       <div className={styles.brand}>
-        <Sprout size={28} className={styles.logo} />
-        <span className={styles.name}>AgroVault</span>
+        <div className={styles.brandContent}>
+          <Sprout size={28} className={styles.logo} />
+          <span className={styles.name}>AgroVault</span>
+        </div>
+        <button className={styles.closeBtn} onClick={onClose}>
+          <X size={24} />
+        </button>
       </div>
 
       <nav className={styles.nav}>
@@ -42,6 +48,7 @@ export default function Sidebar() {
             key={l.to}
             to={l.to}
             end={l.to === '/'}
+            onClick={onClose}
             className={({ isActive }) =>
               `${styles.link} ${isActive ? styles.active : ''}`
             }
@@ -58,6 +65,7 @@ export default function Sidebar() {
               <NavLink
                 key={l.to}
                 to={l.to}
+                onClick={onClose}
                 className={({ isActive }) =>
                   `${styles.link} ${isActive ? styles.active : ''}`
                 }
@@ -74,6 +82,7 @@ export default function Sidebar() {
             <span className={styles.section}>Account</span>
             <NavLink
               to="/login"
+              onClick={onClose}
               className={({ isActive }) =>
                 `${styles.link} ${isActive ? styles.active : ''}`
               }
