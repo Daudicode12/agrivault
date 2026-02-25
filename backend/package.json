@@ -8,6 +8,7 @@
     "start": "nodemon src/server.js",
     "seed": "node src/seeds/seed.js",
     "seed:market": "node src/seeds/seedMarketData.js",
+    "update:prices": "node src/seeds/updateDailyPrices.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .js"
@@ -22,6 +23,7 @@
     "express-validator": "^7.2.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
+    "node-cron": "^4.2.1",
     "winston": "^3.14.0"
   },
   "devDependencies": {

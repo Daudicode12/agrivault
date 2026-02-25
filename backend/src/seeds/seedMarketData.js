@@ -64,6 +64,7 @@ function generatePriceHistory(commodityName, days = 180) {
   for (let d = days; d >= 0; d--) {
     const date = new Date();
     date.setDate(date.getDate() - d);
+    date.setHours(10, 0, 0, 0); // Set to 10 AM for consistency
     const month = date.getMonth(); // 0-indexed
 
     // Apply seasonal factor
